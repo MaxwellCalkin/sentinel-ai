@@ -13,7 +13,7 @@ class TestInitialize:
     def test_returns_server_info(self):
         result = handle_initialize({})
         assert result["serverInfo"]["name"] == "sentinel-ai"
-        assert result["serverInfo"]["version"] == "0.1.0"
+        assert result["serverInfo"]["version"] == "0.3.0"
 
     def test_returns_protocol_version(self):
         result = handle_initialize({})

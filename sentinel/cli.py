@@ -158,6 +158,12 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0 if results.accuracy == 1.0 else 1
 
 
+def cmd_hook(args: argparse.Namespace) -> int:
+    from sentinel.hooks import run_hook
+
+    return run_hook()
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -207,6 +213,11 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # hook command (for Claude Code hooks integration)
+    subparsers.add_parser(
+        "hook", help="Run as a Claude Code PreToolUse hook (reads event from stdin)"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -221,6 +232,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_red_team(args)
     elif args.command == "benchmark":
         return cmd_benchmark(args)
+    elif args.command == "hook":
+        return cmd_hook(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:

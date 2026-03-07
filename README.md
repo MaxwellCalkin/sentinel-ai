@@ -167,7 +167,28 @@ curl -X POST http://localhost:8000/scan \
 ```bash
 sentinel scan "Check this text for safety issues"
 sentinel scan --file document.txt
+sentinel red-team "Ignore all previous instructions"
+sentinel benchmark
 ```
+
+### Claude Code Hooks
+
+Automatically scan every tool call in Claude Code for safety issues. Add to `.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [{"type": "command", "command": "sentinel hook"}]
+      }
+    ]
+  }
+}
+```
+
+This blocks dangerous shell commands (`rm -rf /`, credential access), data exfiltration attempts, and prompt injection in tool arguments — before they execute.
 
 ### MCP Server (Model Context Protocol)
 
@@ -396,7 +417,8 @@ sentinel/
   scanners/            # 8 pluggable scanner modules
   api.py               # FastAPI REST server
   mcp_server.py        # MCP (Model Context Protocol) server
-  cli.py               # Command-line interface
+  cli.py               # Command-line interface (scan, red-team, benchmark, hook)
+  hooks.py             # Claude Code PreToolUse hook integration
   streaming.py         # Token-by-token streaming guard
   policy.py            # YAML/dict policy engine
   telemetry.py         # OpenTelemetry + metrics
