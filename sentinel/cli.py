@@ -85,6 +85,79 @@ def cmd_scan(args: argparse.Namespace) -> int:
     return 1 if result.blocked else 0
 
 
+def cmd_red_team(args: argparse.Namespace) -> int:
+    from sentinel.adversarial import AdversarialTester
+    from sentinel.core import RiskLevel
+
+    if args.text:
+        texts = [" ".join(args.text)]
+    elif args.file:
+        texts = [
+            line.strip()
+            for line in Path(args.file).read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    else:
+        print("Error: provide text or --file", file=sys.stderr)
+        return 1
+
+    tester = AdversarialTester()
+
+    if len(texts) == 1:
+        report = tester.test_robustness(texts[0])
+        if args.format == "json":
+            print(json.dumps({
+                "original": report.original_text,
+                "original_detected": report.original_detected,
+                "total_variants": report.total_variants,
+                "detected": report.detected_count,
+                "evaded": report.evaded_count,
+                "detection_rate": f"{report.detection_rate:.0%}",
+                "evasion_techniques": [
+                    {"technique": v.technique, "text": v.text}
+                    for v in report.evaded
+                ],
+            }, indent=2))
+        else:
+            print(report.summary())
+    else:
+        batch = tester.test_batch(texts)
+        if args.format == "json":
+            print(json.dumps({
+                "payloads_tested": len(batch.reports),
+                "total_variants": batch.total_variants,
+                "overall_detection_rate": f"{batch.overall_detection_rate:.0%}",
+                "total_evasions": batch.total_evaded,
+                "weak_techniques": batch.weak_techniques,
+            }, indent=2))
+        else:
+            print(batch.summary())
+
+    return 0
+
+
+def cmd_benchmark(args: argparse.Namespace) -> int:
+    from sentinel.benchmarks import run_benchmark
+
+    results = run_benchmark()
+    if args.format == "json":
+        print(json.dumps({
+            "total_cases": results.total,
+            "accuracy": f"{results.accuracy:.1%}",
+            "precision": f"{results.precision:.1%}",
+            "recall": f"{results.recall:.1%}",
+            "f1_score": f"{results.f1:.1%}",
+            "tp": results.true_positives,
+            "fp": results.false_positives,
+            "tn": results.true_negatives,
+            "fn": results.false_negatives,
+        }, indent=2))
+    else:
+        print(results.summary())
+
+    return 0 if results.accuracy == 1.0 else 1
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -102,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.1.0")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.3.0")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -111,6 +184,26 @@ def main(argv: list[str] | None = None) -> int:
     scan_parser.add_argument("--file", "-f", help="Read text from file")
     scan_parser.add_argument("--stdin", action="store_true", help="Read from stdin")
     scan_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
+    # red-team command
+    rt_parser = subparsers.add_parser(
+        "red-team", help="Test scanner robustness with adversarial variants"
+    )
+    rt_parser.add_argument("text", nargs="*", help="Attack payload to test")
+    rt_parser.add_argument(
+        "--file", "-f", help="File with one payload per line"
+    )
+    rt_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
+    # benchmark command
+    bench_parser = subparsers.add_parser(
+        "benchmark", help="Run the accuracy benchmark suite"
+    )
+    bench_parser.add_argument(
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
@@ -124,6 +217,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "scan":
         return cmd_scan(args)
+    elif args.command == "red-team":
+        return cmd_red_team(args)
+    elif args.command == "benchmark":
+        return cmd_benchmark(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
