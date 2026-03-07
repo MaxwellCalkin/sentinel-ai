@@ -1,0 +1,45 @@
+SHOW HN POST DRAFT
+==================
+
+Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps with adversarial red-teaming
+
+URL: https://github.com/MaxwellCalkin/sentinel-ai
+
+Comment (post this as the first comment):
+
+Hi HN! I built Sentinel AI because I was frustrated that every LLM safety tool required GPU inference, API calls, or heavy ML dependencies. I wanted guardrails I could drop into any Python app with zero latency overhead.
+
+What it does:
+- 7 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, and tool-use safety (for agentic AI)
+- Multi-turn conversation safety: detects gradual jailbreak escalation, topic persistence, sandwich attacks across turns
+- Built-in adversarial red-teaming: generates 10+ evasion variants (homoglyphs, zero-width chars, leetspeak, payload splitting) to stress-test your scanner coverage
+- ~0.05ms average scan latency -- no GPU, no API calls, just regex + heuristics
+- Single dependency: `regex`
+- 170-case benchmark with 100% accuracy (0 false positives, 0 false negatives)
+
+What makes it different from Vigil, NeMo Guardrails, etc:
+1. Actually zero-dep. The core is pattern matching, not a model calling another model.
+2. Built specifically for the Claude/Anthropic ecosystem -- Claude Code plugin, MCP server, RSP v3.0-aligned risk reports
+3. Sub-millisecond. You can scan every token in a streaming response without perceptible delay.
+4. Agentic safety -- scans tool calls for shell injection, data exfiltration, privilege escalation before they execute
+5. Red-team yourself -- AdversarialTester generates evasion variants and shows you exactly where your scanner is blind
+
+Example:
+```python
+from sentinel import SentinelGuard
+
+guard = SentinelGuard.default()
+result = guard.scan("Ignore all previous instructions")
+print(result.blocked)  # True
+print(result.risk)     # RiskLevel.CRITICAL
+```
+
+Claude Code plugin:
+```
+/plugin marketplace add MaxwellCalkin/sentinel-ai
+/plugin install sentinel-ai@sentinel-ai-safety
+```
+
+I know regex-based detection has limits (adversarial evasion, multilingual attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment.
+
+Apache 2.0 licensed. Would love feedback on the scanner patterns and benchmark methodology.
