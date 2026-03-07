@@ -162,6 +162,13 @@ curl -X POST http://localhost:8000/scan \
   -d '{"text": "Hello, world!"}'
 ```
 
+### Quick Setup
+
+```bash
+pip install sentinel-ai
+sentinel init    # Auto-configures Claude Code hooks + MCP server + policy
+```
+
 ### CLI
 
 ```bash
@@ -169,6 +176,7 @@ sentinel scan "Check this text for safety issues"
 sentinel scan --file document.txt
 sentinel red-team "Ignore all previous instructions"
 sentinel benchmark
+sentinel init     # Set up Claude Code hooks, MCP config, and policy
 ```
 
 ### Claude Code Hooks

@@ -158,6 +158,25 @@ def cmd_benchmark(args: argparse.Namespace) -> int:
     return 0 if results.accuracy == 1.0 else 1
 
 
+def cmd_init(args: argparse.Namespace) -> int:
+    from sentinel.init_config import run_init
+
+    actions = run_init(
+        hooks=not args.no_hooks,
+        mcp=not args.no_mcp,
+        policy=not args.no_policy,
+    )
+
+    if actions:
+        print("Sentinel AI initialized:")
+        for action in actions:
+            print(f"  - {action}")
+    else:
+        print("Nothing to configure.")
+
+    return 0
+
+
 def cmd_hook(args: argparse.Namespace) -> int:
     from sentinel.hooks import run_hook
 
@@ -213,6 +232,20 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # init command
+    init_parser = subparsers.add_parser(
+        "init", help="Auto-configure Sentinel AI for Claude Code and MCP"
+    )
+    init_parser.add_argument(
+        "--no-hooks", action="store_true", help="Skip Claude Code hooks setup"
+    )
+    init_parser.add_argument(
+        "--no-mcp", action="store_true", help="Skip MCP server config"
+    )
+    init_parser.add_argument(
+        "--no-policy", action="store_true", help="Skip policy.yaml creation"
+    )
+
     # hook command (for Claude Code hooks integration)
     subparsers.add_parser(
         "hook", help="Run as a Claude Code PreToolUse hook (reads event from stdin)"
@@ -232,6 +265,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_red_team(args)
     elif args.command == "benchmark":
         return cmd_benchmark(args)
+    elif args.command == "init":
+        return cmd_init(args)
     elif args.command == "hook":
         return cmd_hook(args)
     elif args.command == "serve":
