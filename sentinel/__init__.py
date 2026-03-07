@@ -12,6 +12,7 @@ from sentinel.policy import Policy
 from sentinel.streaming import StreamingGuard
 from sentinel.rsp_report import RiskReportGenerator
 from sentinel.conversation import ConversationGuard
+from sentinel.adversarial import AdversarialTester
 
 __version__ = "0.2.0"
 
@@ -30,4 +31,5 @@ __all__ = [
     "StreamingGuard",
     "RiskReportGenerator",
     "ConversationGuard",
+    "AdversarialTester",
 ]

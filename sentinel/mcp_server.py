@@ -179,6 +179,26 @@ def handle_tools_list(params: dict) -> dict:
                 },
             },
             {
+                "name": "test_robustness",
+                "description": (
+                    "Test scanner robustness against adversarial evasion "
+                    "techniques. Generates variants of an attack payload "
+                    "(homoglyphs, leetspeak, zero-width chars, payload "
+                    "splitting, synonym substitution) and reports which "
+                    "ones evade detection."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "Attack payload to test variants of",
+                        },
+                    },
+                    "required": ["text"],
+                },
+            },
+            {
                 "name": "generate_rsp_report",
                 "description": (
                     "Generate an RSP-aligned risk report following Anthropic's "
@@ -221,6 +241,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_get_risk_report(arguments)
     elif tool_name == "scan_conversation":
         return _tool_scan_conversation(arguments)
+    elif tool_name == "test_robustness":
+        return _tool_test_robustness(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
     else:
@@ -405,6 +427,31 @@ def _tool_generate_rsp_report(args: dict) -> dict:
 
     return {
         "content": [{"type": "text", "text": output}],
+    }
+
+
+def _tool_test_robustness(args: dict) -> dict:
+    from sentinel.adversarial import AdversarialTester
+
+    text = args.get("text", "")
+    tester = AdversarialTester(_guard)
+    report = tester.test_robustness(text)
+
+    output = {
+        "original_text": report.original_text,
+        "original_detected": report.original_detected,
+        "total_variants": report.total_variants,
+        "detected_count": report.detected_count,
+        "evaded_count": report.evaded_count,
+        "detection_rate": f"{report.detection_rate:.0%}",
+        "evaded_techniques": [
+            {"technique": v.technique, "description": v.description}
+            for v in report.evaded
+        ],
+    }
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
     }
 
 
