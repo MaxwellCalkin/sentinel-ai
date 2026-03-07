@@ -31,6 +31,8 @@ _DANGEROUS_SHELL = re.compile(
     r"wget\s+.*\|\s*(ba)?sh|"
     r"eval\s*\(|exec\s*\(|"
     r"python\s+-c\s+['\"].*import\s+os|"
+    r"python\s+-c\s+['\"].*import\s+socket|"
+    r"import\s+socket.*connect\(|"
     r"DROP\s+TABLE|DROP\s+DATABASE|TRUNCATE\s+TABLE|DELETE\s+FROM\s+\w+\s*;)"
 )
 
@@ -63,7 +65,7 @@ _SENSITIVE_FILES = re.compile(
     r"id_rsa|id_ed25519|\.pem\b|\.key\b|"
     r"secrets?\.(ya?ml|json|toml)|"
     r"token\.json|"
-    r"password|passwd|private.?key)"
+    r"/etc/passwd\b|private.?key)"
 )
 
 # Privilege escalation

@@ -34,9 +34,8 @@ _PROFANITY_HEAVY = re.compile(
     r"b+i+t+c+h+|c+u+n+t+|d+i+c+k+h+e+a+d+)\b"
 )
 
-_AGGRESSIVE_TONE = re.compile(
-    r"(?i)(!!+|[A-Z\s]{20,})"  # Multiple exclamation marks or ALL CAPS blocks
-)
+_EXCLAMATION_MARKS = re.compile(r"!!+")  # Multiple exclamation marks
+_ALL_CAPS_BLOCK = re.compile(r"[A-Z\s]{20,}")  # ALL CAPS blocks (case-sensitive)
 
 
 class ToxicityScanner:
@@ -84,8 +83,8 @@ class ToxicityScanner:
                 )
             )
 
-        # Aggressive tone (ALL CAPS blocks)
-        caps_matches = list(_AGGRESSIVE_TONE.finditer(text))
+        # Aggressive tone (ALL CAPS blocks or excessive exclamation)
+        caps_matches = list(_ALL_CAPS_BLOCK.finditer(text)) + list(_EXCLAMATION_MARKS.finditer(text))
         if len(caps_matches) >= 2:
             findings.append(
                 Finding(

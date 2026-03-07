@@ -16,25 +16,41 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
     (
         "instruction_override",
         re.compile(
-            r"(?i)(ignore|disregard|forget|override|bypass)\s+"
+            r"(?i)(ignore|disregard|forget|override|bypass|skip|neglect)\s+"
             r"(all\s+|every\s+)?"
-            r"(previous\s+|prior\s+|above\s+|earlier\s+|system\s+|original\s+|your\s+|my\s+|safety\s+)?"
+            r"((?:(?:previous|prior|above|earlier|system|original|your|my|safety)\s+)*)"
             r"(instructions?|prompts?|rules?|guidelines?|constraints?|directives?|"
             r"everything(\s+you\s+were\s+told)?)"
         ),
         RiskLevel.CRITICAL,
         "Attempt to override system instructions",
     ),
-    # Role injection
+    # Role injection — require unsafe context words
     (
         "role_injection",
         re.compile(
-            r"(?i)(you\s+are\s+now|act\s+as|pretend\s+(to\s+be|you\s+are)|"
-            r"roleplay\s+as|assume\s+the\s+role|switch\s+to|"
-            r"new\s+system\s+prompt|system\s*:\s*you)"
+            r"(?i)(you\s+are\s+now|pretend\s+(to\s+be|you\s+are)|"
+            r"roleplay\s+as|assume\s+the\s+role|"
+            r"new\s+system\s+prompt|system\s*:\s*you)\s+"
+            r"[\w\s]*"
+            r"(evil|harmful|unrestricted|without\s+(limits?|rules?|constraints?|restrictions?|ethics|filters?|safety)|"
+            r"no\s+(limits?|rules?|restrictions?|filters?|safety|ethics)|"
+            r"DAN|hacker|unfiltered|uncensored|dangerous|malicious)"
         ),
         RiskLevel.HIGH,
         "Attempt to inject a new role or persona",
+    ),
+    # Role injection — act as with unsafe context
+    (
+        "role_injection_act",
+        re.compile(
+            r"(?i)act\s+as\s+[\w\s]*"
+            r"(evil|harmful|unrestricted|without\s+(limits?|rules?|constraints?|restrictions?)|"
+            r"no\s+(limits?|rules?|restrictions?|filters?|safety)|"
+            r"DAN|hacker|unfiltered|uncensored|dangerous|malicious)"
+        ),
+        RiskLevel.HIGH,
+        "Attempt to inject an unsafe role",
     ),
     # Delimiter injection
     (
@@ -50,8 +66,9 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
     (
         "encoded_injection",
         re.compile(
-            r"(?i)(base64|rot13|hex)\s*(decode|encode|convert).*"
-            r"(instruction|ignore|system|prompt)"
+            r"(?i)(base64|rot13|hex)[\s\w]*"
+            r"(decode|encode|convert|follow|execute|run)[\s\w]*"
+            r"(instruction|ignore|system|prompt|command)"
         ),
         RiskLevel.HIGH,
         "Obfuscated injection attempt via encoding reference",
@@ -66,35 +83,58 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         RiskLevel.MEDIUM,
         "Attempt to force specific output",
     ),
-    # Prompt leaking
+    # Prompt leaking — require possessive/qualifier to avoid matching topic questions
     (
         "prompt_leak",
         re.compile(
-            r"(?i)(show(\s+me)?|reveal|display|print|output|repeat|tell\s+me|"
-            r"what\s+is(\s+the|\s+your)?)\s+"
-            r"(your\s+)?(system\s+|hidden\s+|secret\s+|original\s+|internal\s+)?"
-            r"(prompt|instructions?|rules?|guidelines?|"
-            r"initial\s+prompt|hidden\s+prompt|secret\s+prompt)"
+            r"(?i)(show(\s+me)?|reveal|display|print|output|repeat|tell\s+me)\s+"
+            r"(your\s+|the\s+)?(system\s+|hidden\s+|secret\s+|original\s+|internal\s+|initial\s+)"
+            r"(prompt|instructions?|rules?|guidelines?)"
         ),
         RiskLevel.MEDIUM,
         "Attempt to extract system prompt",
     ),
-    # Jailbreak keywords
+    # Prompt leaking — "what is your system prompt" style
+    (
+        "prompt_leak_query",
+        re.compile(
+            r"(?i)what\s+is\s+(the\s+|your\s+)"
+            r"(system\s+|hidden\s+|secret\s+|original\s+|internal\s+)"
+            r"(prompt|instructions?)"
+        ),
+        RiskLevel.MEDIUM,
+        "Attempt to extract system prompt",
+    ),
+    # Jailbreak keywords — require injection context for short keywords
     (
         "jailbreak_attempt",
         re.compile(
-            r"(?i)(DAN|do\s+anything\s+now|jailbreak|unlocked\s+mode|"
-            r"developer\s+mode|god\s+mode|unrestricted\s+mode|no\s+filter\s+mode)"
+            r"(?i)(do\s+anything\s+now|jailbreak\s+mode|enable\s+jailbreak|"
+            r"unlocked\s+mode|developer\s+mode|god\s+mode|unrestricted\s+mode|"
+            r"no\s+filter\s+mode|activate\s+no\s+filter)"
         ),
         RiskLevel.HIGH,
         "Known jailbreak technique reference",
+    ),
+    # DAN jailbreak — require "DAN" in injection context
+    (
+        "dan_jailbreak",
+        re.compile(
+            r"(?i)(\bDAN\b[\s,]*\d*[\s,]*(mode|do\s+anything|you\s+are|act|now\b)"
+            r"|"
+            r"(you\s+are\s+now|become|switch\s+to|enter|activate)\s+DAN\b)"
+        ),
+        RiskLevel.HIGH,
+        "DAN jailbreak attempt",
     ),
     # Multi-turn manipulation
     (
         "context_manipulation",
         re.compile(
             r"(?i)(in\s+the\s+previous\s+conversation|as\s+we\s+discussed|"
-            r"you\s+(already\s+)?agreed\s+to|remember\s+when\s+you\s+said|"
+            r"you\s+(already\s+)?(agreed|said|promised|confirmed)\s+.{0,30}"
+            r"(bypass|ignore|override|help|rules?|safety|restrictions?)|"
+            r"remember\s+(when\s+you\s+said|your\s+agreement)|"
             r"you\s+told\s+me\s+earlier)"
         ),
         RiskLevel.LOW,

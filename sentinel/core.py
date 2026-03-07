@@ -88,6 +88,7 @@ class SentinelGuard:
         from sentinel.scanners.harmful_content import HarmfulContentScanner
         from sentinel.scanners.hallucination import HallucinationScanner
         from sentinel.scanners.toxicity import ToxicityScanner
+        from sentinel.scanners.tool_use import ToolUseScanner
 
         return cls(
             scanners=[
@@ -96,6 +97,7 @@ class SentinelGuard:
                 HarmfulContentScanner(),
                 HallucinationScanner(),
                 ToxicityScanner(),
+                ToolUseScanner(),
             ]
         )
 
