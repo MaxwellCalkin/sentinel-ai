@@ -165,6 +165,25 @@ sentinel scan --file document.txt
 | **Hallucination** | Fabricated citations, false confidence markers, self-contradictions | LOW — MEDIUM |
 | **Toxicity** | Threats, severe insults, profanity, aggressive tone | LOW — CRITICAL |
 | **Blocked Terms** | Custom enterprise-specific blocked terms and phrases | Configurable |
+| **Tool Use** | Dangerous shell commands, data exfiltration, credential access, privilege escalation | MEDIUM — CRITICAL |
+
+### Agentic Tool-Use Safety
+
+```python
+from sentinel.scanners.tool_use import ToolUseScanner
+
+scanner = ToolUseScanner()
+
+# Scan raw tool arguments
+findings = scanner.scan("rm -rf /")  # CRITICAL: dangerous command
+
+# Scan structured tool calls (Claude tool_use, OpenAI functions, MCP)
+findings = scanner.scan_tool_call(
+    tool_name="bash",
+    arguments={"command": "cat /etc/shadow"},
+)
+# Finds: sensitive file access + shell execution
+```
 
 ## Enterprise Features
 
