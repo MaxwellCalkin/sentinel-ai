@@ -398,15 +398,15 @@ app = create_authenticated_app()
 
 ## Benchmark
 
-170-case benchmark suite covering prompt injection (including advanced jailbreaks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
+288-case benchmark suite covering prompt injection (including advanced jailbreaks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
 
 ```
-Benchmark Results (170 cases)
+Benchmark Results (288 cases)
   Accuracy:  100.0%
   Precision: 100.0%
   Recall:    100.0%
   F1 Score:  100.0%
-  TP=100 FP=0 TN=70 FN=0
+  TP=169 FP=0 TN=119 FN=0
 ```
 
 Run the benchmark:
