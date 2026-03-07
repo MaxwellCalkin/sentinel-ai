@@ -3,7 +3,10 @@
   "displayName": "Sentinel AI - Safety Guardrails",
   "version": "0.1.0",
   "description": "Real-time safety scanning for LLM interactions. Detects prompt injection, PII leaks, harmful content, hallucinations, toxicity, and dangerous tool calls — with sub-millisecond latency.",
-  "author": "Maxwell Calkin",
+  "author": {
+    "name": "Maxwell Calkin",
+    "url": "https://github.com/MaxwellCalkin"
+  },
   "homepage": "https://github.com/MaxwellCalkin/sentinel-ai",
   "repository": "https://github.com/MaxwellCalkin/sentinel-ai",
   "license": "Apache-2.0",
