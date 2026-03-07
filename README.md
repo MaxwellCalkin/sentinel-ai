@@ -18,7 +18,7 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ## Why Sentinel AI?
 
 - **Fast**: ~0.05ms average scan latency. No GPU required. No API calls.
-- **Comprehensive**: 7 built-in scanners covering the OWASP LLM Top 10.
+- **Comprehensive**: 8 built-in scanners covering the OWASP LLM Top 10.
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
@@ -199,6 +199,7 @@ Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_repor
 | **Toxicity** | Threats, severe insults, profanity, aggressive tone | LOW — CRITICAL |
 | **Blocked Terms** | Custom enterprise-specific blocked terms and phrases | Configurable |
 | **Tool Use** | Dangerous shell commands, data exfiltration, credential access, privilege escalation | MEDIUM — CRITICAL |
+| **Structured Output** | XSS, SQL injection, template injection, path traversal in JSON values; schema validation | LOW — CRITICAL |
 
 ### Agentic Tool-Use Safety
 
@@ -216,6 +217,25 @@ findings = scanner.scan_tool_call(
     arguments={"command": "cat /etc/shadow"},
 )
 # Finds: sensitive file access + shell execution
+```
+
+### Structured Output Validation
+
+Scan LLM-generated JSON for injection attacks hidden in field values, plus schema validation:
+
+```python
+from sentinel.scanners.structured_output import StructuredOutputScanner
+
+scanner = StructuredOutputScanner(schema={
+    "name": {"type": "string", "required": True},
+    "age": {"type": "integer", "min": 0, "max": 150},
+    "role": {"type": "string", "enum": ["admin", "user", "guest"]},
+})
+
+# Detects XSS, SQL injection, template injection, path traversal
+findings = scanner.scan('{"name": "<script>alert(1)</script>"}')
+# Validates types, ranges, enums, required fields
+findings = scanner.scan('{"name": "Alice", "age": 200}')
 ```
 
 ### RSP-Aligned Risk Reports
@@ -373,7 +393,7 @@ print(results.summary())
 ```
 sentinel/
   core.py              # SentinelGuard orchestrator, Scanner protocol
-  scanners/            # 7 pluggable scanner modules
+  scanners/            # 8 pluggable scanner modules
   api.py               # FastAPI REST server
   mcp_server.py        # MCP (Model Context Protocol) server
   cli.py               # Command-line interface

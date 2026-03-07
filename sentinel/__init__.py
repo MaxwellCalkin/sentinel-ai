@@ -8,6 +8,7 @@ from sentinel.scanners.hallucination import HallucinationScanner
 from sentinel.scanners.toxicity import ToxicityScanner
 from sentinel.scanners.blocked_terms import BlockedTermsScanner
 from sentinel.scanners.tool_use import ToolUseScanner
+from sentinel.scanners.structured_output import StructuredOutputScanner
 from sentinel.policy import Policy
 from sentinel.streaming import StreamingGuard
 from sentinel.rsp_report import RiskReportGenerator
@@ -32,4 +33,5 @@ __all__ = [
     "RiskReportGenerator",
     "ConversationGuard",
     "AdversarialTester",
+    "StructuredOutputScanner",
 ]
