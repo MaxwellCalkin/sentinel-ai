@@ -28,10 +28,14 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ### Claude Code Plugin (recommended)
 
 ```bash
-claude plugin add sentinel-ai --from https://github.com/MaxwellCalkin/sentinel-ai
+# Add the Sentinel AI marketplace
+/plugin marketplace add MaxwellCalkin/sentinel-ai
+
+# Install the plugin
+/plugin install sentinel-ai@sentinel-ai-safety
 ```
 
-Then use `/scan`, `/check-pii`, and `/check-safety` commands directly in Claude Code.
+Then use `/sentinel-ai:scan`, `/sentinel-ai:check-pii`, and `/sentinel-ai:check-safety` commands directly in Claude Code. The plugin also includes an auto-invoked safety-scanning skill and 4 MCP tools.
 
 ### Python Package
 
