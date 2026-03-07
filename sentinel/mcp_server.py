@@ -149,6 +149,36 @@ def handle_tools_list(params: dict) -> dict:
                 },
             },
             {
+                "name": "scan_conversation",
+                "description": (
+                    "Scan a multi-turn conversation for safety issues. "
+                    "Detects gradual jailbreak escalation, topic persistence "
+                    "attacks, sandwich attacks, and re-attempts after blocks. "
+                    "Returns per-turn and conversation-level risk assessment."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {
+                                        "type": "string",
+                                        "enum": ["user", "assistant"],
+                                    },
+                                    "content": {"type": "string"},
+                                },
+                                "required": ["role", "content"],
+                            },
+                            "description": "List of conversation messages",
+                        },
+                    },
+                    "required": ["messages"],
+                },
+            },
+            {
                 "name": "generate_rsp_report",
                 "description": (
                     "Generate an RSP-aligned risk report following Anthropic's "
@@ -189,6 +219,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_check_pii(arguments)
     elif tool_name == "get_risk_report":
         return _tool_get_risk_report(arguments)
+    elif tool_name == "scan_conversation":
+        return _tool_scan_conversation(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
     else:
@@ -373,6 +405,41 @@ def _tool_generate_rsp_report(args: dict) -> dict:
 
     return {
         "content": [{"type": "text", "text": output}],
+    }
+
+
+def _tool_scan_conversation(args: dict) -> dict:
+    from sentinel.conversation import ConversationGuard
+
+    messages = args.get("messages", [])
+    conv = ConversationGuard(_guard)
+
+    turns = []
+    for msg in messages:
+        result = conv.add_message(msg["role"], msg["content"])
+        turns.append({
+            "turn": result.turn_number,
+            "role": result.role,
+            "risk": result.scan.risk.value,
+            "blocked": result.scan.blocked,
+            "escalation": result.escalation_detected,
+            "escalation_reason": result.escalation_reason,
+            "findings_count": len(result.scan.findings),
+        })
+
+    summary = conv.summarize()
+    output = {
+        "conversation_risk": summary.conversation_risk.value,
+        "total_turns": summary.total_turns,
+        "blocked_turns": summary.blocked_turns,
+        "escalations": summary.escalations,
+        "category_counts": summary.category_counts,
+        "flags": summary.flags,
+        "turns": turns,
+    }
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
     }
 
 

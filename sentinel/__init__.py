@@ -11,6 +11,7 @@ from sentinel.scanners.tool_use import ToolUseScanner
 from sentinel.policy import Policy
 from sentinel.streaming import StreamingGuard
 from sentinel.rsp_report import RiskReportGenerator
+from sentinel.conversation import ConversationGuard
 
 __version__ = "0.2.0"
 
@@ -28,4 +29,5 @@ __all__ = [
     "Policy",
     "StreamingGuard",
     "RiskReportGenerator",
+    "ConversationGuard",
 ]
