@@ -35,5 +35,6 @@ sentinel = "sentinel.cli:main"
 packages = ["sentinel"]
 
 [project.urls]
-Homepage = "https://github.com/sentinel-ai/sentinel"
-Documentation = "https://sentinel-ai.dev"
+Homepage = "https://github.com/MaxwellCalkin/sentinel-ai"
+Repository = "https://github.com/MaxwellCalkin/sentinel-ai"
+Issues = "https://github.com/MaxwellCalkin/sentinel-ai/issues"
