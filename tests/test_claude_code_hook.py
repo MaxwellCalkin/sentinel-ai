@@ -1,12 +1,14 @@
 """Tests for Claude Code hook integration."""
 
 import json
+import os
 import subprocess
 import sys
 import pytest
 
 
-HOOK_SCRIPT = "examples/claude_code_hook.py"
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+HOOK_SCRIPT = os.path.join(PROJECT_ROOT, "examples", "claude_code_hook.py")
 
 
 def run_hook(tool_call: dict) -> dict:
@@ -16,7 +18,7 @@ def run_hook(tool_call: dict) -> dict:
         input=json.dumps(tool_call),
         capture_output=True,
         text=True,
-        cwd="C:/Users/MaxCalkin/hope/career/product",
+        cwd=PROJECT_ROOT,
     )
     return json.loads(result.stdout)
 
@@ -74,7 +76,7 @@ class TestClaudeCodeHook:
             input="not valid json",
             capture_output=True,
             text=True,
-            cwd="C:/Users/MaxCalkin/hope/career/product",
+            cwd=PROJECT_ROOT,
         )
         output = json.loads(result.stdout)
         assert output["decision"] == "allow"
