@@ -12,7 +12,7 @@ from sentinel.policy import Policy
 from sentinel.streaming import StreamingGuard
 from sentinel.rsp_report import RiskReportGenerator
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "SentinelGuard",
