@@ -155,6 +155,25 @@ sentinel scan "Check this text for safety issues"
 sentinel scan --file document.txt
 ```
 
+### MCP Server (Model Context Protocol)
+
+Sentinel AI runs as an MCP server, making safety scanning available to Claude Desktop, Claude Code, and any MCP-compatible client.
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "sentinel-ai": {
+      "command": "python",
+      "args": ["-m", "sentinel.mcp_server"]
+    }
+  }
+}
+```
+
+Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`.
+
 ## Scanners
 
 | Scanner | Detects | Risk Levels |
@@ -275,8 +294,9 @@ print(results.summary())
 ```
 sentinel/
   core.py              # SentinelGuard orchestrator, Scanner protocol
-  scanners/            # 6 pluggable scanner modules
+  scanners/            # 7 pluggable scanner modules
   api.py               # FastAPI REST server
+  mcp_server.py        # MCP (Model Context Protocol) server
   cli.py               # Command-line interface
   streaming.py         # Token-by-token streaming guard
   policy.py            # YAML/dict policy engine
