@@ -24,6 +24,8 @@ dependencies = [
 [project.optional-dependencies]
 api = ["fastapi>=0.100", "uvicorn>=0.20"]
 ml = ["torch>=2.0", "transformers>=4.30"]
+langchain = ["langchain-core>=0.1"]
+llamaindex = ["llama-index-core>=0.10"]
 dev = ["pytest>=7.0", "pytest-asyncio>=0.21", "httpx>=0.24"]
 
 [project.scripts]
