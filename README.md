@@ -18,12 +18,22 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ## Why Sentinel AI?
 
 - **Fast**: ~0.05ms average scan latency. No GPU required. No API calls.
-- **Comprehensive**: 6 built-in scanners covering the OWASP LLM Top 10.
+- **Comprehensive**: 7 built-in scanners covering the OWASP LLM Top 10.
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
 
 ## Installation
+
+### Claude Code Plugin (recommended)
+
+```bash
+claude plugin add sentinel-ai --from https://github.com/MaxwellCalkin/sentinel-ai
+```
+
+Then use `/scan`, `/check-pii`, and `/check-safety` commands directly in Claude Code.
+
+### Python Package
 
 ```bash
 pip install sentinel-ai
