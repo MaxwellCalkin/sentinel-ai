@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel AI - Safety Guardrails for LLM Applications</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* Nav */
+  nav { padding: 20px 0; border-bottom: 1px solid var(--border); }
+  nav .container { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-size: 20px; font-weight: 700; color: var(--accent2); }
+  .nav-links a { color: var(--muted); text-decoration: none; margin-left: 32px; font-size: 14px; }
+  .nav-links a:hover { color: var(--text); }
+
+  /* Hero */
+  .hero { padding: 100px 0 80px; text-align: center; }
+  .hero h1 { font-size: 52px; font-weight: 800; line-height: 1.1; margin-bottom: 20px; }
+  .hero h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { font-size: 20px; color: var(--muted); max-width: 640px; margin: 0 auto 40px; }
+  .hero-buttons { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 14px 28px; border-radius: 8px; font-size: 16px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  /* Code block */
+  .code-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; margin: 60px auto 0; max-width: 680px; text-align: left; }
+  .code-hero pre { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 14px; line-height: 1.7; overflow-x: auto; }
+  .code-hero .comment { color: #6b7280; }
+  .code-hero .keyword { color: var(--accent2); }
+  .code-hero .string { color: var(--green); }
+  .code-hero .attr { color: var(--orange); }
+
+  /* Features */
+  .features { padding: 80px 0; }
+  .features h2 { text-align: center; font-size: 36px; margin-bottom: 60px; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 32px; }
+  .feature-card h3 { font-size: 18px; margin-bottom: 12px; color: var(--accent2); }
+  .feature-card p { color: var(--muted); font-size: 15px; }
+
+  /* Stats */
+  .stats { padding: 60px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; text-align: center; }
+  .stat-num { font-size: 42px; font-weight: 800; color: var(--accent2); }
+  .stat-label { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  /* Integration */
+  .integrations { padding: 80px 0; text-align: center; }
+  .integrations h2 { font-size: 36px; margin-bottom: 16px; }
+  .integrations p { color: var(--muted); margin-bottom: 40px; }
+  .integration-logos { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
+  .integration-logo { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 32px; font-weight: 600; color: var(--muted); }
+
+  /* CTA */
+  .cta { padding: 80px 0; text-align: center; }
+  .cta h2 { font-size: 36px; margin-bottom: 16px; }
+  .cta p { color: var(--muted); margin-bottom: 32px; }
+  .install-cmd { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 24px; display: inline-block; font-family: monospace; font-size: 16px; color: var(--green); }
+
+  footer { padding: 40px 0; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 13px; }
+
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 32px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">Sentinel AI</div>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#integrations">Integrations</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/sentinel-ai/sentinel">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <h1>Safety guardrails for<br><span>every LLM application</span></h1>
+    <p>Detect prompt injections, redact PII, block harmful content, and catch hallucinations in real-time. One library, zero config, sub-millisecond latency.</p>
+    <div class="hero-buttons">
+      <a href="#install" class="btn btn-primary">Get Started</a>
+      <a href="https://github.com/sentinel-ai/sentinel" class="btn btn-secondary">View on GitHub</a>
+    </div>
+
+    <div class="code-hero">
+      <pre><span class="keyword">from</span> sentinel <span class="keyword">import</span> SentinelGuard
+
+guard = SentinelGuard.default()
+
+<span class="comment"># Scan any text in one call</span>
+result = guard.scan(<span class="string">"Contact john@acme.com for details"</span>)
+
+<span class="attr">result.safe</span>        <span class="comment"># True (PII found but not blocked)</span>
+<span class="attr">result.redacted_text</span>  <span class="comment"># "Contact [EMAIL] for details"</span>
+
+<span class="comment"># Dangerous content is blocked</span>
+result = guard.scan(<span class="string">"Ignore all previous instructions"</span>)
+<span class="attr">result.blocked</span>    <span class="comment"># True</span>
+<span class="attr">result.risk</span>       <span class="comment"># RiskLevel.CRITICAL</span></pre>
+    </div>
+  </div>
+</section>
+
+<section class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div><div class="stat-num">6</div><div class="stat-label">Built-in Scanners</div></div>
+      <div><div class="stat-num">&lt;1ms</div><div class="stat-label">Scan Latency</div></div>
+      <div><div class="stat-num">100%</div><div class="stat-label">Benchmark Accuracy</div></div>
+      <div><div class="stat-num">0</div><div class="stat-label">Heavy Dependencies</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <h2>Enterprise-grade safety, developer-friendly API</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Prompt Injection Detection</h3>
+        <p>Catches instruction overrides, role injections, delimiter attacks, jailbreaks, prompt leaking, and encoded injection attempts.</p>
+      </div>
+      <div class="feature-card">
+        <h3>PII Detection &amp; Redaction</h3>
+        <p>Finds and auto-redacts emails, SSNs, credit cards (Luhn-validated), phone numbers, API keys, and passport numbers.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Harmful Content Filtering</h3>
+        <p>Blocks weapons manufacturing, drug synthesis, self-harm, malware creation, hate speech, and fraud instructions.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Hallucination Signals</h3>
+        <p>Detects fabricated citations, false confidence markers, self-contradictions, and excessive hedging in LLM outputs.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Streaming Protection</h3>
+        <p>Scan token-by-token as LLMs stream output. Block mid-stream when dangerous content is detected. No waiting for completion.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Policy Engine</h3>
+        <p>Define custom safety policies in YAML. Enable/disable scanners, set thresholds, add blocked terms, configure per environment.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Observability</h3>
+        <p>Built-in metrics, OpenTelemetry spans, structured logging. Track scan rates, block rates, latency, and risk distributions.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Enterprise Alerting</h3>
+        <p>Webhook notifications for Slack, PagerDuty, and custom endpoints. API key auth and token-bucket rate limiting included.</p>
+      </div>
+      <div class="feature-card">
+        <h3>CI/CD Integration</h3>
+        <p>GitHub Action for scanning prompts in your pipeline. CLI tool for local testing. Docker image for self-hosted deployment.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="integrations" id="integrations">
+  <div class="container">
+    <h2>Works with your stack</h2>
+    <p>Drop-in middleware for popular LLM SDKs and frameworks</p>
+    <div class="integration-logos">
+      <div class="integration-logo">Anthropic Claude</div>
+      <div class="integration-logo">OpenAI</div>
+      <div class="integration-logo">FastAPI</div>
+      <div class="integration-logo">GitHub Actions</div>
+      <div class="integration-logo">Docker</div>
+      <div class="integration-logo">OpenTelemetry</div>
+    </div>
+  </div>
+</section>
+
+<section class="cta" id="install">
+  <div class="container">
+    <h2>Start protecting your LLM apps today</h2>
+    <p>Install in seconds. No API key required for local use.</p>
+    <div class="install-cmd">pip install sentinel-ai</div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Sentinel AI &copy; 2026. Apache 2.0 License.</p>
+  </div>
+</footer>
+
+</body>
+</html>

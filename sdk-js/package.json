@@ -1,0 +1,16 @@
+{
+  "name": "@sentinel-ai/sdk",
+  "version": "0.1.0",
+  "description": "Sentinel AI - Real-time safety guardrails for LLM applications",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test src/*.test.ts"
+  },
+  "keywords": ["ai-safety", "llm", "guardrails", "prompt-injection", "pii"],
+  "devDependencies": {
+    "typescript": "^5.3"
+  }
+}

@@ -1,0 +1,28 @@
+version: "1"
+name: "production-strict"
+block_threshold: "high"
+redact_pii: true
+
+scanners:
+  prompt_injection:
+    enabled: true
+    block_threshold: "medium"
+  pii:
+    enabled: true
+    allow_patterns:
+      - "support@yourcompany.com"
+      - "noreply@yourcompany.com"
+  harmful_content:
+    enabled: true
+  hallucination:
+    enabled: false
+  toxicity:
+    enabled: true
+
+custom_blocked_terms:
+  - "internal_codename"
+  - "unreleased_feature"
+  - "competitor_product"
+
+allow_list:
+  - "This is a known safe test phrase"

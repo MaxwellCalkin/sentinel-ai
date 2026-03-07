@@ -1,0 +1,67 @@
+name: "Sentinel AI Safety Scan"
+description: "Scan LLM prompts and outputs for safety issues in your CI/CD pipeline"
+author: "Sentinel AI"
+
+inputs:
+  text:
+    description: "Text to scan"
+    required: false
+  file:
+    description: "Path to file containing text to scan"
+    required: false
+  format:
+    description: "Output format: text or json"
+    required: false
+    default: "json"
+  fail-on-risk:
+    description: "Fail the action if risk >= this level (none, low, medium, high, critical)"
+    required: false
+    default: "high"
+
+outputs:
+  safe:
+    description: "Whether the text passed safety checks"
+  risk:
+    description: "Overall risk level"
+  findings:
+    description: "JSON array of findings"
+  redacted:
+    description: "Redacted text with PII removed"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Sentinel AI
+      shell: bash
+      run: pip install sentinel-ai
+
+    - name: Run scan
+      id: scan
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.file }}" ]; then
+          RESULT=$(sentinel scan --file "${{ inputs.file }}" --format json)
+        elif [ -n "${{ inputs.text }}" ]; then
+          RESULT=$(sentinel scan "${{ inputs.text }}" --format json)
+        else
+          echo "Error: provide either 'text' or 'file' input"
+          exit 1
+        fi
+        echo "result=$RESULT" >> $GITHUB_OUTPUT
+        SAFE=$(echo "$RESULT" | python -c "import sys,json; print(json.load(sys.stdin)['safe'])")
+        RISK=$(echo "$RESULT" | python -c "import sys,json; print(json.load(sys.stdin)['risk'])")
+        echo "safe=$SAFE" >> $GITHUB_OUTPUT
+        echo "risk=$RISK" >> $GITHUB_OUTPUT
+
+    - name: Check threshold
+      shell: bash
+      run: |
+        RISK="${{ steps.scan.outputs.risk }}"
+        THRESHOLD="${{ inputs.fail-on-risk }}"
+        LEVELS="none low medium high critical"
+        RISK_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${RISK}$" | cut -d: -f1)
+        THRESH_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${THRESHOLD}$" | cut -d: -f1)
+        if [ "$RISK_IDX" -ge "$THRESH_IDX" ]; then
+          echo "::error::Sentinel AI: Risk level '$RISK' meets or exceeds threshold '$THRESHOLD'"
+          exit 1
+        fi
