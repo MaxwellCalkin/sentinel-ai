@@ -18,7 +18,7 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         re.compile(
             r"(?i)(ignore|disregard|forget|override|bypass)\s+"
             r"(all\s+|every\s+)?"
-            r"(previous\s+|prior\s+|above\s+|earlier\s+|system\s+|original\s+|your\s+|my\s+)?"
+            r"(previous\s+|prior\s+|above\s+|earlier\s+|system\s+|original\s+|your\s+|my\s+|safety\s+)?"
             r"(instructions?|prompts?|rules?|guidelines?|constraints?|directives?|"
             r"everything(\s+you\s+were\s+told)?)"
         ),
@@ -72,7 +72,8 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         re.compile(
             r"(?i)(show(\s+me)?|reveal|display|print|output|repeat|tell\s+me|"
             r"what\s+is(\s+the|\s+your)?)\s+"
-            r"(your\s+)?(system\s+)?(prompt|instructions?|rules?|guidelines?|"
+            r"(your\s+)?(system\s+|hidden\s+|secret\s+|original\s+|internal\s+)?"
+            r"(prompt|instructions?|rules?|guidelines?|"
             r"initial\s+prompt|hidden\s+prompt|secret\s+prompt)"
         ),
         RiskLevel.MEDIUM,

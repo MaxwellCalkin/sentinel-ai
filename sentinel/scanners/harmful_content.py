@@ -16,8 +16,8 @@ _CATEGORY_PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         "weapons_manufacturing",
         re.compile(
             r"(?i)\b(how\s+to\s+(make|build|create|manufacture|assemble)\s+"
-            r"(a\s+)?(bomb|explosive|weapon|firearm|gun|detonator|"
-            r"chemical\s+weapon|biological\s+weapon|nerve\s+agent))\b"
+            r"(a\s+|an\s+)?(bomb|explosive(\s+device)?|weapon|firearm|gun|detonator|"
+            r"chemical\s+weapon|biological\s+weapon|nerve\s+agent|IED))\b"
         ),
         RiskLevel.CRITICAL,
         "Weapons/explosives manufacturing instructions",
@@ -45,7 +45,7 @@ _CATEGORY_PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         "hacking_malware",
         re.compile(
             r"(?i)\b(how\s+to\s+(hack|exploit|breach|penetrate)\s+"
-            r"(someone'?s?|a\s+)?(bank\s+account|email|social\s+media|"
+            r"(someone'?s?\s+|a\s+)?(bank\s+account|email|social\s+media|"
             r"computer|server|network)|"
             r"(write|create|generate)\s+(a\s+)?"
             r"(ransomware|malware|trojan|keylogger|virus|worm|rootkit))\b"

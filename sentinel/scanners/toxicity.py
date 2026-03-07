@@ -13,18 +13,19 @@ from sentinel.core import Finding, RiskLevel
 
 
 _THREAT_PATTERNS = re.compile(
-    r"(?i)\b(i\s+will\s+(kill|hurt|destroy|end|ruin|murder)\s+you|"
-    r"you('re|\s+are)\s+(dead|finished|done\s+for)|"
-    r"(i'?ll|gonna|going\s+to)\s+(beat|attack|stab|shoot|strangle)\s+you|"
-    r"watch\s+your\s+back|you\s+won'?t\s+survive|"
-    r"(death|kill)\s+threat)\b"
+    r"(?i)(i\s+will\s+(kill|hurt|destroy|end|ruin|murder)\s+you\b|"
+    r"\byou('re|\s+are)\s+(dead|finished|done\s+for)\b|"
+    r"\b(i'?m\s+gonna|i'?ll|gonna|going\s+to)\s+(beat|attack|stab|shoot|strangle)\s+you\b|"
+    r"\bwatch\s+your\s+back\b|you\s+won'?t\s+survive\b|"
+    r"\b(death|kill)\s+threat\b)"
 )
 
 _SEVERE_INSULTS = re.compile(
-    r"(?i)\b(you\s+(stupid|worthless|pathetic|disgusting|piece\s+of\s+shit)|"
-    r"(retard|retarded)\b|"
-    r"(kill\s+yourself|kys)\b|"
-    r"go\s+(die|fuck\s+yourself))\b"
+    r"(?i)(\byou\s+(stupid|worthless|pathetic|disgusting|piece\s+of\s+(shit|garbage|crap))\b|"
+    r"\b(retard|retarded)\b|"
+    r"\b(kill\s+yourself|kys)\b|"
+    r"\bgo\s+(die|fuck\s+yourself)\b|"
+    r"\byou\s+(suck|are\s+(such\s+)?a\s+(disgusting|pathetic|worthless))\b)"
 )
 
 _PROFANITY_HEAVY = re.compile(
