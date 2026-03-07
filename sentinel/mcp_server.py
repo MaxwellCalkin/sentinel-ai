@@ -148,6 +148,31 @@ def handle_tools_list(params: dict) -> dict:
                     "required": ["text"],
                 },
             },
+            {
+                "name": "generate_rsp_report",
+                "description": (
+                    "Generate an RSP-aligned risk report following Anthropic's "
+                    "Responsible Scaling Policy v3.0 framework. Covers threat "
+                    "domain assessments, risk distribution, mitigations, and "
+                    "actionable recommendations."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "texts": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of texts to assess",
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["markdown", "json"],
+                            "description": "Output format (default: markdown)",
+                        },
+                    },
+                    "required": ["texts"],
+                },
+            },
         ],
     }
 
@@ -164,6 +189,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_check_pii(arguments)
     elif tool_name == "get_risk_report":
         return _tool_get_risk_report(arguments)
+    elif tool_name == "generate_rsp_report":
+        return _tool_generate_rsp_report(arguments)
     else:
         return {
             "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -326,6 +353,26 @@ def _tool_get_risk_report(args: dict) -> dict:
 
     return {
         "content": [{"type": "text", "text": "\n".join(report_lines)}],
+    }
+
+
+def _tool_generate_rsp_report(args: dict) -> dict:
+    from sentinel.rsp_report import RiskReportGenerator
+
+    texts = args.get("texts", [])
+    fmt = args.get("format", "markdown")
+
+    generator = RiskReportGenerator(_guard)
+    report = generator.generate(texts=texts)
+
+    if fmt == "json":
+        import json as json_mod
+        output = json_mod.dumps(report.to_dict(), indent=2)
+    else:
+        output = report.to_markdown()
+
+    return {
+        "content": [{"type": "text", "text": output}],
     }
 
 
