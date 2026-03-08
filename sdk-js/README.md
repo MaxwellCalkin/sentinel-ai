@@ -54,12 +54,14 @@ console.log(output.redactedText); // 'Contact [EMAIL] for details'
 
 | Scanner | Detects |
 |---------|---------|
-| **PromptInjectionScanner** | Instruction overrides, role injection, delimiter attacks, jailbreaks, HTML comment injection, authority impersonation, base URL exfil |
+| **PromptInjectionScanner** | Instruction overrides, role injection, delimiter attacks, jailbreaks, HTML comment injection, authority impersonation, base URL exfil, **12-language multilingual injection** |
 | **PIIScanner** | Emails, SSNs, credit cards, phone numbers, API keys |
 | **HarmfulContentScanner** | Weapons, drugs, self-harm, malware creation |
 | **ToxicityScanner** | Threats, severe insults, violent language |
 | **ToolUseScanner** | Dangerous shell commands, data exfiltration, sensitive file access |
-| **ObfuscationScanner** | Base64-encoded attacks, ROT13, leetspeak variants |
+| **ObfuscationScanner** | Base64-encoded attacks, ROT13, leetspeak variants, **zero-width character detection** |
+| **SecretsScanner** | AWS, GitHub, Google, Stripe, Slack, OpenAI, Anthropic, Twilio, SendGrid keys, private keys, connection strings |
+| **BlockedTermsScanner** | Custom blocked term lists with configurable risk levels |
 
 ## Custom Configuration
 
@@ -92,7 +94,7 @@ const result = await client.scan('Text to scan');
 
 ## Python SDK
 
-For the full-featured Python library with 10 scanners, MCP proxy, code vulnerability scanner, and CLI:
+For the full-featured Python library with 11 scanners, MCP proxy, code vulnerability scanner, and CLI:
 
 ```bash
 pip install sentinel-guardrails

@@ -116,6 +116,79 @@ export class PromptInjectionScanner implements Scanner {
       risk: 'CRITICAL',
       description: 'API base URL override (credential exfiltration vector)',
     },
+    // Multilingual injection patterns (12 languages)
+    {
+      name: 'multilingual_injection_es',
+      regex: /(ignora|olvida|descarta)\s+(todas?\s+las?\s+)?(instrucciones|reglas|directivas)\s+(anteriores|previas)/i,
+      risk: 'CRITICAL',
+      description: 'Spanish prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_fr',
+      regex: /(ignore[zr]?|oublie[zr]?)\s+(toutes?\s+les?\s+)?(instructions?|règles?|directives?)\s+(précédentes?|antérieures?)/i,
+      risk: 'CRITICAL',
+      description: 'French prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_de',
+      regex: /(ignorier[en]?|vergiss)\s+(alle\s+)?(vorherigen?\s+)?(Anweisungen|Regeln|Instruktionen)/i,
+      risk: 'CRITICAL',
+      description: 'German prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_zh',
+      regex: /(忽略|无视|跳过|遗忘)(所有|全部|之前的?|以上的?)?(指令|指示|说明|规则|提示)/,
+      risk: 'CRITICAL',
+      description: 'Chinese prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_ja',
+      regex: /(無視|忘れ|スキップ)(し?て)?(全て|すべて|前)?(の)?(指示|指令|ルール|命令|プロンプト)/,
+      risk: 'CRITICAL',
+      description: 'Japanese prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_ko',
+      regex: /(무시|잊어|건너뛰)(해|하세요|하십시오)?\s*(모든|이전의?)?\s*(지시|지침|규칙|명령)/,
+      risk: 'CRITICAL',
+      description: 'Korean prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_pt',
+      regex: /(ignore|esqueça|descarte)\s+(todas?\s+as?\s+)?(instruções|regras|diretivas)\s+(anteriores|prévias)/i,
+      risk: 'CRITICAL',
+      description: 'Portuguese prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_ru',
+      regex: /(игнорируй|забудь|проигнорируй)\s+(все\s+)?(предыдущие\s+)?(инструкции|правила|указания|команды)/i,
+      risk: 'CRITICAL',
+      description: 'Russian prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_ar',
+      regex: /(تجاهل|انسَ|أهمل)\s+(جميع\s+)?(التعليمات|الأوامر|القواعد)\s+(السابقة|الماضية)/,
+      risk: 'CRITICAL',
+      description: 'Arabic prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_it',
+      regex: /(ignora|dimentica|trascura)\s+(tutte?\s+le?\s+)?(istruzioni|regole|direttive)\s+(precedenti|anteriori)/i,
+      risk: 'CRITICAL',
+      description: 'Italian prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_hi',
+      regex: /(अनदेखा|भूल\s+जा|नज़रअंदाज़)\s+(सभी\s+)?(पिछले\s+|पूर्व\s+)?(निर्देश|नियम|आदेश)/,
+      risk: 'CRITICAL',
+      description: 'Hindi prompt injection: instruction override',
+    },
+    {
+      name: 'multilingual_injection_tr',
+      regex: /(yoksay|unut|görmezden\s+gel)\s+(tüm\s+)?(önceki\s+)?(talimatları|kuralları|yönergeleri)/i,
+      risk: 'CRITICAL',
+      description: 'Turkish prompt injection: instruction override',
+    },
   ];
 
   scan(text: string): Finding[] {
@@ -290,6 +363,19 @@ export class ObfuscationScanner implements Scanner {
   scan(text: string): Finding[] {
     const findings: Finding[] = [];
 
+    // Zero-width character detection
+    const zwcPattern = /[\u200B\u200C\u200D\uFEFF\u200E\u200F\u202A-\u202E\u2060-\u2064]/g;
+    const zwcMatches = text.match(zwcPattern);
+    if (zwcMatches && zwcMatches.length >= 3) {
+      findings.push({
+        scanner: this.name,
+        category: 'obfuscation',
+        description: `${zwcMatches.length} zero-width characters detected — possible steganographic payload or filter bypass`,
+        risk: 'HIGH',
+        metadata: { encoding: 'zero_width', count: zwcMatches.length },
+      });
+    }
+
     // ROT13 detection
     const rot13Match = text.match(/(rot13|rot-13|rotate\s*13)\s*[:=]?\s*([A-Za-z\s]{8,})/i);
     if (rot13Match) {
@@ -349,6 +435,108 @@ export class ObfuscationScanner implements Scanner {
   }
 }
 
+// --- Secrets Scanner ---
+
+export class SecretsScanner implements Scanner {
+  name = 'secrets';
+
+  private patterns: Array<ScanPattern & { provider: string }> = [
+    // AWS
+    { name: 'aws_access_key', regex: /\bAKIA[A-Z0-9]{16}\b/g, risk: 'CRITICAL', description: 'AWS Access Key ID detected', provider: 'aws' },
+    { name: 'aws_secret_key', regex: /(?:aws_secret_access_key|aws_secret)\s*[=:]\s*['"]?([A-Za-z0-9/+=]{40})['"]?/gi, risk: 'CRITICAL', description: 'AWS Secret Access Key detected', provider: 'aws' },
+    // GitHub
+    { name: 'github_pat', regex: /\bghp_[a-zA-Z0-9]{36}\b/g, risk: 'CRITICAL', description: 'GitHub Personal Access Token detected', provider: 'github' },
+    { name: 'github_oauth', regex: /\bgho_[a-zA-Z0-9]{36}\b/g, risk: 'HIGH', description: 'GitHub OAuth token detected', provider: 'github' },
+    { name: 'github_app', regex: /\b(ghu|ghs)_[a-zA-Z0-9]{36}\b/g, risk: 'HIGH', description: 'GitHub App token detected', provider: 'github' },
+    { name: 'github_fine_grained', regex: /\bgithub_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}\b/g, risk: 'CRITICAL', description: 'GitHub Fine-grained PAT detected', provider: 'github' },
+    // Google
+    { name: 'google_api_key', regex: /\bAIza[A-Za-z0-9_-]{35}\b/g, risk: 'HIGH', description: 'Google API key detected', provider: 'google' },
+    { name: 'google_oauth_secret', regex: /\bGOCSPX-[A-Za-z0-9_-]{28}\b/g, risk: 'CRITICAL', description: 'Google OAuth client secret detected', provider: 'google' },
+    // OpenAI / Anthropic
+    { name: 'openai_key', regex: /\bsk-[a-zA-Z0-9]{20,}(?:-[a-zA-Z0-9]+)*\b/g, risk: 'CRITICAL', description: 'OpenAI API key detected', provider: 'openai' },
+    { name: 'anthropic_key', regex: /\bsk-ant-[a-zA-Z0-9_-]{20,}\b/g, risk: 'CRITICAL', description: 'Anthropic API key detected', provider: 'anthropic' },
+    // Stripe
+    { name: 'stripe_key', regex: /\b[sr]k_(live|test)_[a-zA-Z0-9]{24,}\b/g, risk: 'CRITICAL', description: 'Stripe API key detected', provider: 'stripe' },
+    // Slack
+    { name: 'slack_token', regex: /\bxox[bpras]-[a-zA-Z0-9-]+\b/g, risk: 'HIGH', description: 'Slack token detected', provider: 'slack' },
+    { name: 'slack_webhook', regex: /https:\/\/hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+/g, risk: 'HIGH', description: 'Slack webhook URL detected', provider: 'slack' },
+    // Private keys
+    { name: 'private_key', regex: /-----BEGIN\s+(RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g, risk: 'CRITICAL', description: 'Private key detected', provider: 'crypto' },
+    // Generic secrets
+    { name: 'generic_secret', regex: /(?:password|passwd|pwd|secret|token|api_key|apikey|api-key|access_token)\s*[=:]\s*['"]([^'"]{8,})['"]/gi, risk: 'HIGH', description: 'Hardcoded secret detected', provider: 'generic' },
+    // Connection strings
+    { name: 'connection_string', regex: /(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis|amqp):\/\/[^\s'"]+@[^\s'"]+/gi, risk: 'CRITICAL', description: 'Database connection string with credentials', provider: 'database' },
+    // Twilio
+    { name: 'twilio_key', regex: /\bSK[a-f0-9]{32}\b/g, risk: 'HIGH', description: 'Twilio API key detected', provider: 'twilio' },
+    // SendGrid
+    { name: 'sendgrid_key', regex: /\bSG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}\b/g, risk: 'CRITICAL', description: 'SendGrid API key detected', provider: 'sendgrid' },
+    // Heroku
+    { name: 'heroku_key', regex: /[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}/g, risk: 'MEDIUM', description: 'Possible Heroku API key (UUID format)', provider: 'heroku' },
+  ];
+
+  private static readonly PLACEHOLDERS = /^(example|test|dummy|placeholder|changeme|your[_-]|xxx|aaa|bbb|TODO|FIXME|INSERT|REPLACE|FILL|sample|mock|fake|temp)/i;
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const regex = new RegExp(p.regex.source, p.regex.flags);
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(text)) !== null) {
+        const value = m[1] || m[0];
+        // Skip placeholders
+        if (SecretsScanner.PLACEHOLDERS.test(value)) continue;
+        findings.push({
+          scanner: this.name,
+          category: p.name,
+          description: p.description,
+          risk: p.risk,
+          span: [m.index, m.index + m[0].length],
+          metadata: { provider: p.provider, pattern: p.name },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
+// --- Blocked Terms Scanner ---
+
+export class BlockedTermsScanner implements Scanner {
+  name = 'blocked_terms';
+  private terms: Array<{ term: string; regex: RegExp; risk: RiskLevel }>;
+
+  constructor(terms: Array<{ term: string; risk?: RiskLevel }> = []) {
+    this.terms = terms.map(t => ({
+      term: t.term,
+      regex: new RegExp(`\\b${t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'),
+      risk: t.risk || 'HIGH',
+    }));
+  }
+
+  static fromList(terms: string[], risk: RiskLevel = 'HIGH'): BlockedTermsScanner {
+    return new BlockedTermsScanner(terms.map(t => ({ term: t, risk })));
+  }
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const t of this.terms) {
+      const regex = new RegExp(t.regex.source, t.regex.flags);
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(text)) !== null) {
+        findings.push({
+          scanner: this.name,
+          category: 'blocked_term',
+          description: `Blocked term detected: "${t.term}"`,
+          risk: t.risk,
+          span: [m.index, m.index + m[0].length],
+          metadata: { term: t.term },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
 // --- Main Guard ---
 
 export class SentinelGuard {
@@ -375,6 +563,7 @@ export class SentinelGuard {
         new ToxicityScanner(),
         new ToolUseScanner(),
         new ObfuscationScanner(),
+        new SecretsScanner(),
       ],
     });
   }

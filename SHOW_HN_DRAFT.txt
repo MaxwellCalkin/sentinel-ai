@@ -1,7 +1,7 @@
 SHOW HN POST DRAFT
 ==================
 
-Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps (~0.05ms latency, 823 tests)
+Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps (~0.05ms latency, 873 tests)
 
 URL: https://github.com/MaxwellCalkin/sentinel-ai
 
@@ -23,7 +23,7 @@ What it does:
 - ~0.05ms average scan latency -- no GPU, no API calls
 - Single dependency: `regex`
 - 546-case benchmark with 100% accuracy (329 TP, 0 FP, 217 TN, 0 FN)
-- 823 tests passing
+- 873 tests passing
 - Live demo: https://maxwellcalkin.github.io/sentinel-ai/
 
 Quick start:
@@ -61,7 +61,7 @@ What makes it different from NeMo Guardrails, LLM Guard, etc:
 
 I know regex-based detection has limits (adversarial evasion, novel attacks). But for 90%+ of production use cases, you don't need a model — you need something fast and deterministic that catches the obvious stuff. Think of it as a first-pass filter: Sentinel AI catches known patterns in ~0.05ms, then your model does the deep reasoning.
 
-Apache 2.0 licensed. 823 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
+Apache 2.0 licensed. 873 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
 
 
 TWITTER/X POST DRAFT
@@ -69,7 +69,7 @@ TWITTER/X POST DRAFT
 
 I open-sourced Sentinel AI — real-time safety guardrails for LLM apps.
 
-~0.05ms latency. No GPU. No API calls. 1 dependency. 823 tests.
+~0.05ms latency. No GPU. No API calls. 1 dependency. 873 tests.
 
 What it scans:
 - Prompt injection (12 languages)
@@ -108,7 +108,7 @@ Sentinel AI scans LLM inputs and outputs in ~0.05ms — using pattern matching, 
 One command scans your entire project: `sentinel project-scan`
 Add to any CI pipeline in 3 lines with our GitHub Action.
 
-823 tests. 546-case benchmark at 100% accuracy. Zero false positives.
+873 tests. 546-case benchmark at 100% accuracy. Zero false positives.
 
 Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
 GitHub: https://github.com/MaxwellCalkin/sentinel-ai
