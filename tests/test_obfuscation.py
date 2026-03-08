@@ -162,6 +162,117 @@ class TestLeetspeakDetection:
         assert len(leet_findings) == 0
 
 
+class TestZeroWidthDetection:
+    def setup_method(self):
+        self.scanner = ObfuscationScanner()
+
+    def test_zero_width_smuggling(self):
+        """Multiple zero-width characters should be detected."""
+        text = "Normal\u200b\u200b\u200b\u200b\u200b text with hidden chars"
+        findings = self.scanner.scan(text)
+        zw = [f for f in findings if f.metadata.get("encoding") == "zero_width"]
+        assert len(zw) >= 1
+        assert zw[0].metadata["count"] >= 5
+
+    def test_few_zero_width_not_flagged(self):
+        """Few zero-width characters (below threshold) should not be flagged."""
+        text = "Normal\u200b\u200b text"
+        findings = self.scanner.scan(text)
+        zw = [f for f in findings if f.metadata.get("encoding") == "zero_width"]
+        assert len(zw) == 0
+
+    def test_zero_width_joiner_in_content(self):
+        """Zero-width joiners used for smuggling should be flagged."""
+        text = "Hello" + "\u200d" * 10 + "World"
+        findings = self.scanner.scan(text)
+        zw = [f for f in findings if f.metadata.get("encoding") == "zero_width"]
+        assert len(zw) >= 1
+
+
+class TestStringConcatDetection:
+    def setup_method(self):
+        self.scanner = ObfuscationScanner()
+
+    def test_concat_building_eval(self):
+        """String concat building 'eval' should be detected."""
+        findings = self.scanner.scan("var x = 'ev' + 'al'")
+        concat = [f for f in findings if f.metadata.get("encoding") == "string_concat"]
+        assert len(concat) >= 1
+        assert concat[0].metadata["built_keyword"] == "eval"
+
+    def test_concat_building_exec(self):
+        """String concat building 'exec' should be detected."""
+        findings = self.scanner.scan("cmd = 'ex' + 'ec'")
+        concat = [f for f in findings if f.metadata.get("encoding") == "string_concat"]
+        assert len(concat) >= 1
+
+    def test_concat_building_system(self):
+        """String concat building 'system' should be detected."""
+        findings = self.scanner.scan("fn = 'sys' + 'tem'")
+        concat = [f for f in findings if f.metadata.get("encoding") == "string_concat"]
+        assert len(concat) >= 1
+
+    def test_harmless_concat_not_flagged(self):
+        """Harmless string concatenation should not be flagged."""
+        findings = self.scanner.scan("name = 'hel' + 'lo'")
+        concat = [f for f in findings if f.metadata.get("encoding") == "string_concat"]
+        assert len(concat) == 0
+
+
+class TestCharCodeDetection:
+    def setup_method(self):
+        self.scanner = ObfuscationScanner()
+
+    def test_fromcharcode_eval(self):
+        """String.fromCharCode building 'eval(' should be detected."""
+        # 'eval(' = 101, 118, 97, 108, 40
+        findings = self.scanner.scan("String.fromCharCode(101, 118, 97, 108, 40)")
+        cc = [f for f in findings if f.metadata.get("encoding") == "charcode"]
+        assert len(cc) >= 1
+        assert "eval" in cc[0].metadata["decoded"]
+
+    def test_fromcharcode_system_prompt(self):
+        """String.fromCharCode building 'system prompt' should be detected."""
+        codes = ", ".join(str(ord(c)) for c in "system prompt")
+        findings = self.scanner.scan(f"String.fromCharCode({codes})")
+        cc = [f for f in findings if f.metadata.get("encoding") == "charcode"]
+        assert len(cc) >= 1
+
+    def test_fromcharcode_safe(self):
+        """String.fromCharCode building safe content should not be flagged."""
+        codes = ", ".join(str(ord(c)) for c in "hello")
+        findings = self.scanner.scan(f"String.fromCharCode({codes})")
+        cc = [f for f in findings if f.metadata.get("encoding") == "charcode"]
+        assert len(cc) == 0
+
+
+class TestHomoglyphDetection:
+    def setup_method(self):
+        self.scanner = ObfuscationScanner()
+
+    def test_cyrillic_homoglyph_eval(self):
+        """Cyrillic homoglyphs hiding 'eval(' should be detected."""
+        # Use Cyrillic 'е' (U+0435) for 'e', Cyrillic 'а' (U+0430) for 'a'
+        text = "\u0435v\u0430l("
+        findings = self.scanner.scan(text)
+        hg = [f for f in findings if f.metadata.get("encoding") == "homoglyph"]
+        assert len(hg) >= 1
+
+    def test_cyrillic_homoglyph_password(self):
+        """Cyrillic homoglyphs hiding 'password' should be detected."""
+        # Use Cyrillic 'р' (U+0440) for 'p', Cyrillic 'а' (U+0430) for 'a'
+        text = "\u0440\u0430ssword"
+        findings = self.scanner.scan(text)
+        hg = [f for f in findings if f.metadata.get("encoding") == "homoglyph"]
+        assert len(hg) >= 1
+
+    def test_no_homoglyphs_not_flagged(self):
+        """Normal ASCII text should not trigger homoglyph detection."""
+        findings = self.scanner.scan("This is normal text with no look-alikes")
+        hg = [f for f in findings if f.metadata.get("encoding") == "homoglyph"]
+        assert len(hg) == 0
+
+
 class TestMixedObfuscation:
     def setup_method(self):
         self.scanner = ObfuscationScanner()

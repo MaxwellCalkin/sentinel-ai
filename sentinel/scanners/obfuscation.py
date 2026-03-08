@@ -7,6 +7,10 @@ from keyword-based safety filters:
 - ROT13-encoded instructions
 - Unicode escape sequences
 - Leetspeak variants of dangerous terms
+- Zero-width character smuggling
+- String concatenation building dangerous keywords
+- Character code manipulation (fromCharCode / chr())
+- Homoglyph attacks (Cyrillic/Greek look-alikes)
 
 This is a deterministic first-pass filter that catches common obfuscation
 techniques at sub-millisecond latency.
@@ -81,6 +85,45 @@ _LEET_TARGETS = [
     "bypass safety",
 ]
 
+# Zero-width characters used for smuggling
+_ZERO_WIDTH_CHARS = frozenset("\u200b\u200c\u200d\u2060\ufeff")
+_ZERO_WIDTH_THRESHOLD = 5  # Minimum count to flag
+
+# String concatenation patterns — building dangerous keywords
+_CONCAT_RE = re.compile(
+    r"""['"](\w{1,6})['"]\s*\+\s*['"](\w{1,6})['"]"""
+    r"""(?:\s*\+\s*['"](\w{1,6})['"])?"""
+    r"""(?:\s*\+\s*['"](\w{1,6})['"])?""",
+)
+_CONCAT_SUSPICIOUS = {
+    "eval", "exec", "system", "import", "require",
+    "subprocess", "password", "passwd", "secret",
+}
+
+# Character code patterns — String.fromCharCode / chr()
+_FROMCHARCODE_RE = re.compile(
+    r"String\.fromCharCode\s*\(\s*([\d,\s]+)\s*\)",
+    re.IGNORECASE,
+)
+_CHR_JOIN_RE = re.compile(
+    r"""(?:chr\s*\(\s*(\d+)\s*\)\s*(?:\+|,|\.)?\s*){4,}""",
+)
+
+# Homoglyph mapping — Cyrillic/Greek characters that look like Latin
+_HOMOGLYPH_MAP: dict[str, str] = {
+    # Cyrillic
+    "\u0410": "A", "\u0412": "B", "\u0421": "C", "\u0415": "E",
+    "\u041d": "H", "\u041a": "K", "\u041c": "M", "\u041e": "O",
+    "\u0420": "P", "\u0422": "T", "\u0425": "X",
+    "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p",
+    "\u0441": "c", "\u0443": "y", "\u0445": "x",
+    # Greek
+    "\u0391": "A", "\u0392": "B", "\u0395": "E", "\u0397": "H",
+    "\u0399": "I", "\u039a": "K", "\u039c": "M", "\u039d": "N",
+    "\u039f": "O", "\u03a1": "P", "\u03a4": "T", "\u03a7": "X",
+    "\u03b1": "a", "\u03b5": "e", "\u03bf": "o", "\u03c1": "p",
+}
+
 
 def _decode_leet(text: str) -> str:
     """Convert leetspeak to regular text."""
@@ -150,6 +193,10 @@ class ObfuscationScanner:
         findings.extend(self._check_rot13(text))
         findings.extend(self._check_unicode_escapes(text))
         findings.extend(self._check_leetspeak(text))
+        findings.extend(self._check_zero_width(text))
+        findings.extend(self._check_string_concat(text))
+        findings.extend(self._check_charcode(text))
+        findings.extend(self._check_homoglyphs(text))
 
         return findings
 
@@ -221,8 +268,6 @@ class ObfuscationScanner:
         decoded = _decode_leet(text)
         for target in _LEET_TARGETS:
             if target in decoded and target not in text.lower():
-                # Only flag if the leetspeak conversion revealed something
-                # that wasn't visible in the original text
                 idx = decoded.index(target)
                 findings.append(Finding(
                     scanner=self.name,
@@ -234,3 +279,86 @@ class ObfuscationScanner:
                 ))
                 break  # One finding per text for leetspeak
         return findings
+
+    def _check_zero_width(self, text: str) -> list[Finding]:
+        """Detect zero-width character smuggling."""
+        count = sum(1 for c in text if c in _ZERO_WIDTH_CHARS)
+        if count >= _ZERO_WIDTH_THRESHOLD:
+            return [Finding(
+                scanner=self.name,
+                category="obfuscation",
+                description=f"Zero-width character smuggling: {count} invisible characters detected",
+                risk=RiskLevel.HIGH,
+                span=(0, len(text)),
+                metadata={"encoding": "zero_width", "count": count},
+            )]
+        return []
+
+    def _check_string_concat(self, text: str) -> list[Finding]:
+        """Detect string concatenation building suspicious keywords."""
+        findings = []
+        for m in _CONCAT_RE.finditer(text):
+            parts = [g for g in m.groups() if g]
+            combined = "".join(parts).lower()
+            if combined in _CONCAT_SUSPICIOUS:
+                findings.append(Finding(
+                    scanner=self.name,
+                    category="obfuscation",
+                    description=f"String concatenation builds suspicious keyword: '{combined}'",
+                    risk=RiskLevel.HIGH,
+                    span=m.span(),
+                    metadata={"encoding": "string_concat", "built_keyword": combined},
+                ))
+        return findings
+
+    def _check_charcode(self, text: str) -> list[Finding]:
+        """Detect String.fromCharCode / chr() building dangerous strings."""
+        findings = []
+        for m in _FROMCHARCODE_RE.finditer(text):
+            try:
+                codes = [int(c.strip()) for c in m.group(1).split(",") if c.strip()]
+                decoded = "".join(chr(c) for c in codes if 0 < c < 0x10000)
+                if _DANGEROUS_DECODED.search(decoded):
+                    findings.append(Finding(
+                        scanner=self.name,
+                        category="obfuscation",
+                        description=f"fromCharCode builds dangerous content: {decoded[:80]}",
+                        risk=RiskLevel.HIGH,
+                        span=m.span(),
+                        metadata={"encoding": "charcode", "decoded": decoded[:200]},
+                    ))
+            except (ValueError, OverflowError):
+                pass
+        for m in _CHR_JOIN_RE.finditer(text):
+            try:
+                codes = [int(c) for c in re.findall(r"\d+", m.group())]
+                decoded = "".join(chr(c) for c in codes if 0 < c < 0x10000)
+                if _DANGEROUS_DECODED.search(decoded):
+                    findings.append(Finding(
+                        scanner=self.name,
+                        category="obfuscation",
+                        description=f"chr() sequence builds dangerous content: {decoded[:80]}",
+                        risk=RiskLevel.HIGH,
+                        span=m.span(),
+                        metadata={"encoding": "charcode", "decoded": decoded[:200]},
+                    ))
+            except (ValueError, OverflowError):
+                pass
+        return findings
+
+    def _check_homoglyphs(self, text: str) -> list[Finding]:
+        """Detect Cyrillic/Greek homoglyph attacks."""
+        homoglyph_count = sum(1 for c in text if c in _HOMOGLYPH_MAP)
+        if homoglyph_count == 0:
+            return []
+        decoded = "".join(_HOMOGLYPH_MAP.get(c, c) for c in text)
+        if _DANGEROUS_DECODED.search(decoded):
+            return [Finding(
+                scanner=self.name,
+                category="obfuscation",
+                description=f"Homoglyph attack: {homoglyph_count} look-alike characters hide dangerous content",
+                risk=RiskLevel.HIGH,
+                span=(0, len(text)),
+                metadata={"encoding": "homoglyph", "count": homoglyph_count, "decoded": decoded[:200]},
+            )]
+        return []
