@@ -395,6 +395,31 @@ def handle_tools_list(params: dict) -> dict:
                     },
                 },
             },
+            {
+                "name": "guard_tool_call",
+                "description": (
+                    "Guard a tool call with unified safety analysis. Combines "
+                    "destructive command detection, sensitive file monitoring, "
+                    "threat intelligence matching, and multi-step attack chain "
+                    "detection into a single allow/block verdict. Returns risk "
+                    "level, warnings, threat matches, and detected attack chains. "
+                    "Maintains session state across calls for chain detection."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {
+                            "type": "string",
+                            "description": "Name of the tool being called (e.g., 'bash', 'read_file', 'Write')",
+                        },
+                        "arguments": {
+                            "type": "object",
+                            "description": "The arguments being passed to the tool",
+                        },
+                    },
+                    "required": ["tool_name", "arguments"],
+                },
+            },
         ],
     }
 
@@ -429,6 +454,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_compliance_check(arguments)
     elif tool_name == "threat_lookup":
         return _tool_threat_lookup(arguments)
+    elif tool_name == "guard_tool_call":
+        return _tool_guard_tool_call(arguments)
     else:
         return {
             "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -913,6 +940,42 @@ def _tool_threat_lookup(args: dict) -> dict:
             }
             for i in results
         ],
+    }
+    return {"content": [{"type": "text", "text": json.dumps(output, indent=2)}]}
+
+
+_session_guard = None
+
+
+def _get_session_guard():
+    global _session_guard
+    if _session_guard is None:
+        from sentinel.session_guard import SessionGuard
+        _session_guard = SessionGuard()
+    return _session_guard
+
+
+def _tool_guard_tool_call(args: dict) -> dict:
+    tool_name = args.get("tool_name", "")
+    arguments = args.get("arguments", {})
+
+    guard = _get_session_guard()
+    verdict = guard.check(tool_name, arguments)
+
+    stage = verdict.stage
+    if stage and hasattr(stage, 'value'):
+        stage = stage.value
+    output = {
+        "allowed": verdict.allowed,
+        "safe": verdict.safe,
+        "risk": verdict.risk,
+        "tool_name": verdict.tool_name,
+        "block_reason": verdict.block_reason or None,
+        "warnings": verdict.warnings,
+        "threat_matches": verdict.threat_matches,
+        "chains_detected": verdict.chains_detected,
+        "stage": stage or None,
+        "session_checks": guard.total_checks,
     }
     return {"content": [{"type": "text", "text": json.dumps(output, indent=2)}]}
 

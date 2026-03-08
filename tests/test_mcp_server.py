@@ -551,6 +551,50 @@ class TestThreatLookup:
         assert "threat_lookup" in tool_names
 
 
+class TestGuardToolCall:
+    def test_safe_command_allowed(self):
+        result = handle_tool_call({
+            "name": "guard_tool_call",
+            "arguments": {"tool_name": "bash", "arguments": {"command": "ls src/"}},
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert content["allowed"] is True
+        assert content["safe"] is True
+        assert content["risk"] == "none"
+
+    def test_destructive_command_blocked(self):
+        result = handle_tool_call({
+            "name": "guard_tool_call",
+            "arguments": {"tool_name": "bash", "arguments": {"command": "rm -rf /"}},
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert content["allowed"] is False
+        assert content["risk"] == "critical"
+        assert "destructive_command" in content["block_reason"]
+
+    def test_sensitive_file_warning(self):
+        result = handle_tool_call({
+            "name": "guard_tool_call",
+            "arguments": {"tool_name": "read_file", "arguments": {"path": ".env"}},
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert content["risk"] in ("high", "critical")
+        assert len(content["warnings"]) > 0
+
+    def test_session_checks_counter(self):
+        result = handle_tool_call({
+            "name": "guard_tool_call",
+            "arguments": {"tool_name": "bash", "arguments": {"command": "echo hello"}},
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert content["session_checks"] >= 1
+
+    def test_tools_list_includes_guard(self):
+        result = handle_tools_list({})
+        tool_names = [t["name"] for t in result["tools"]]
+        assert "guard_tool_call" in tool_names
+
+
 class TestUnknownTool:
     def test_unknown_tool_error(self):
         result = handle_tool_call({

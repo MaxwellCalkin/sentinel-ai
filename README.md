@@ -350,7 +350,7 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Available MCP tools (13): `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `scan_code`, `scan_secrets`, `check_canary`, `harden_prompt`, `generate_rsp_report`, `compliance_check`, `threat_lookup`.
+Available MCP tools (14): `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `scan_code`, `scan_secrets`, `check_canary`, `harden_prompt`, `generate_rsp_report`, `compliance_check`, `threat_lookup`, `guard_tool_call`.
 
 ### CLAUDE.md Security Scanner
 
