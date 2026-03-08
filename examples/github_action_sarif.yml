@@ -1,0 +1,40 @@
+# Example GitHub Actions workflow for Sentinel AI safety scanning with SARIF upload.
+#
+# This workflow scans LLM-generated code for OWASP vulnerabilities and uploads
+# results to the GitHub Security tab via SARIF format.
+#
+# Copy this file to .github/workflows/sentinel-scan.yml in your repo.
+
+name: Sentinel AI Safety Scan
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  security-events: write  # Required for SARIF upload
+  contents: read
+
+jobs:
+  sentinel-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Scan generated code for OWASP vulnerabilities (SQL injection, XSS, etc.)
+      # Results appear in the GitHub Security tab
+      - name: Scan code for vulnerabilities
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          code-scan: src/  # Path to code to scan
+          upload-sarif: "true"
+          block-on: high
+
+      # Or scan text for prompt injection, PII, harmful content
+      - name: Scan PR body for safety issues
+        if: github.event_name == 'pull_request'
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          text: ${{ github.event.pull_request.body }}
+          block-on: critical
