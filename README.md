@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-977%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-995%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -796,6 +796,28 @@ print(summary.anomaly_count)  # 3
 ```
 
 Detects: destructive commands, data exfiltration, credential access, runaway loops, write spikes, and read-then-exfiltrate attack chains.
+
+### Drop-in SDK Guard Wrappers
+
+Add safety scanning to Anthropic or OpenAI API calls with one line of code:
+
+```python
+from anthropic import Anthropic
+from sentinel.middleware.guard import guard_anthropic
+
+client = guard_anthropic(Anthropic())
+
+# All API calls now have automatic safety scanning
+response = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": user_input}],
+)
+# Raises BlockedInputError if user_input contains injection attacks
+# Raises BlockedOutputError if model output triggers safety scanners
+```
+
+Also available for OpenAI: `guard_openai(OpenAI())`. Supports scan callbacks, non-blocking mode, and custom guard configuration.
 
 ## Enterprise Features
 
