@@ -3243,4 +3243,284 @@ export class CodeScanner {
   }
 }
 
+// ============================================================================
+// DependencyScanner — Supply chain attack detection for package manifests
+// ============================================================================
+
+const _TYPOSQUAT_MAP: Record<string, string[]> = {
+  requests: ['reqests', 'requets', 'request', 'requsts', 'reqeusts', 'rquests'],
+  urllib3: ['urllib', 'urlib3', 'urllib4', 'urrlib3'],
+  numpy: ['numpi', 'numppy', 'nunpy', 'nump'],
+  pandas: ['panda', 'pandsa', 'pandass'],
+  flask: ['flaask', 'flassk', 'flaskk'],
+  django: ['djnago', 'dajngo', 'djago', 'djngo'],
+  boto3: ['botto3', 'boto33', 'botoo3'],
+  cryptography: ['cyptography', 'crytography', 'cryptograpy'],
+  express: ['expres', 'expresss', 'exress'],
+  lodash: ['lodassh', 'lodaash', 'loddash', 'loadash'],
+  react: ['reac', 'reactt', 'raect'],
+  axios: ['axois', 'axioss', 'axos'],
+  webpack: ['webpak', 'webppack', 'wepback'],
+  next: ['nextt', 'nex'],
+  typescript: ['typesript', 'tyepscript', 'typscript'],
+  eslint: ['eslintt', 'eslit', 'eslnt'],
+};
+
+const _KNOWN_MALICIOUS_PKGS = new Set([
+  'colourama', 'python-dateutil2', 'jeIlyfish', 'python3-dateutil',
+  'acqusition', 'apidev-coop', 'baborern', 'coffee-script',
+  'crossenv', 'cross-env.js', 'd3.js', 'fabric-js', 'ffmpegs',
+  'gruntcli', 'http-proxy.js', 'jquery.js', 'mongose', 'mssql-node',
+  'mssql.js', 'mysqljs', 'node-fabric', 'node-opencv', 'node-opensl',
+  'node-openssl', 'node-sqlite', 'nodecaffe', 'nodefabric',
+  'nodemailer-js', 'noderequest', 'nodesass', 'nodesqlite',
+  'opencv.js', 'openssl.js', 'proxy.js', 'shadowsock', 'sqlite.js',
+  'sqliter', 'sqlserver', 'tkinter', 'setup-tools', 'virtualnv',
+  'beautifulsup4', 'noblesse', 'noblessev2', 'noblesse2',
+]);
+
+const _SUSPICIOUS_URLS: Array<{ pattern: RegExp; risk: RiskLevel; description: string }> = [
+  {
+    pattern: /git\+https?:\/\/(?!github\.com\/|gitlab\.com\/|bitbucket\.org\/)/gi,
+    risk: 'HIGH',
+    description: 'Suspicious git URL: dependency installed from untrusted source',
+  },
+  {
+    pattern: /https?:\/\/[^/\s]+\.(?:xyz|tk|ml|ga|cf|gq|top|buzz|club)\//gi,
+    risk: 'CRITICAL',
+    description: 'Dependency URL uses suspicious TLD commonly associated with malware',
+  },
+  {
+    pattern: /https?:\/\/(?:pastebin\.com|paste\.ee|hastebin\.com|ghostbin\.co)\//gi,
+    risk: 'CRITICAL',
+    description: 'Dependency installed from paste site — likely malicious',
+  },
+  {
+    pattern: /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/gi,
+    risk: 'HIGH',
+    description: 'Dependency installed from raw IP address — suspicious',
+  },
+];
+
+/**
+ * Scans dependency files for supply chain attack patterns.
+ *
+ * Detects typosquatting, known malicious packages, suspicious install URLs,
+ * unpinned versions, and dangerous install scripts.
+ *
+ * @example
+ * ```ts
+ * const scanner = new DependencyScanner();
+ * const findings = scanner.scan('crossenv\nrequests\n', 'requirements.txt');
+ * // findings[0].category === 'malicious_package'
+ * ```
+ */
+export class DependencyScanner {
+  scan(content: string, filename = ''): Finding[] {
+    const findings: Finding[] = [];
+    const ext = filename.toLowerCase();
+
+    if (ext.endsWith('requirements.txt') || ext.endsWith('.txt')) {
+      findings.push(...this._scanRequirements(content));
+    } else if (ext.endsWith('package.json')) {
+      findings.push(...this._scanPackageJson(content));
+    } else if (ext.endsWith('pyproject.toml') || ext.endsWith('Pipfile')) {
+      findings.push(...this._scanPyproject(content));
+    } else {
+      findings.push(...this._scanRequirements(content));
+      findings.push(...this._scanPackageJson(content));
+      findings.push(...this._scanPyproject(content));
+    }
+
+    // Deduplicate
+    const seen = new Set<string>();
+    return findings.filter(f => {
+      const key = `${f.description}:${f.metadata.line ?? ''}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  private _scanRequirements(content: string): Finding[] {
+    const findings: Finding[] = [];
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith('#')) continue;
+      const lineNum = i + 1;
+
+      const pkgMatch = line.match(/^([a-zA-Z0-9_.-]+)/);
+      if (!pkgMatch) {
+        this._checkUrls(line, lineNum, findings);
+        continue;
+      }
+
+      const pkgName = pkgMatch[1].toLowerCase();
+
+      if (_KNOWN_MALICIOUS_PKGS.has(pkgName)) {
+        findings.push({
+          scanner: 'dependency_scanner',
+          category: 'malicious_package',
+          description: `Known malicious package: '${pkgName}' — removed from registry for malware`,
+          risk: 'CRITICAL',
+          metadata: { line: lineNum, package: pkgName },
+        });
+      }
+
+      this._checkTyposquat(pkgName, lineNum, findings);
+      this._checkUrls(line, lineNum, findings);
+
+      if (/^[a-zA-Z0-9_.-]+\s*$/.test(line)) {
+        findings.push({
+          scanner: 'dependency_scanner',
+          category: 'unpinned_dependency',
+          description: `Unpinned dependency: '${pkgName}' — pin to specific version`,
+          risk: 'LOW',
+          metadata: { line: lineNum, package: pkgName },
+        });
+      }
+    }
+
+    return findings;
+  }
+
+  private _scanPackageJson(content: string): Finding[] {
+    const findings: Finding[] = [];
+    let data: Record<string, unknown>;
+
+    try {
+      data = JSON.parse(content);
+    } catch {
+      return findings;
+    }
+
+    for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+      const deps = data[section];
+      if (!deps || typeof deps !== 'object') continue;
+
+      for (const [pkgName, version] of Object.entries(deps as Record<string, unknown>)) {
+        const pkgLower = pkgName.toLowerCase();
+
+        if (_KNOWN_MALICIOUS_PKGS.has(pkgLower)) {
+          findings.push({
+            scanner: 'dependency_scanner',
+            category: 'malicious_package',
+            description: `Known malicious package: '${pkgName}' — removed from registry for malware`,
+            risk: 'CRITICAL',
+            metadata: { package: pkgName, section },
+          });
+        }
+
+        this._checkTyposquat(pkgLower, 0, findings);
+
+        if (typeof version === 'string') {
+          this._checkUrls(version, 0, findings);
+
+          if (version === '*' || version === 'latest') {
+            findings.push({
+              scanner: 'dependency_scanner',
+              category: 'unpinned_dependency',
+              description: `Wildcard dependency: '${pkgName}' version '${version}' — pin to specific version`,
+              risk: 'MEDIUM',
+              metadata: { package: pkgName, version, section },
+            });
+          }
+        }
+      }
+    }
+
+    // Check install scripts
+    const scripts = data.scripts;
+    if (scripts && typeof scripts === 'object') {
+      for (const [name, cmd] of Object.entries(scripts as Record<string, unknown>)) {
+        if (typeof cmd !== 'string') continue;
+        if (['preinstall', 'install', 'postinstall'].includes(name)) {
+          if (/\b(?:curl|wget|nc|bash|sh|eval|exec)\b/.test(cmd)) {
+            findings.push({
+              scanner: 'dependency_scanner',
+              category: 'dangerous_install_script',
+              description: 'Install script executes external commands — potential supply chain attack',
+              risk: 'CRITICAL',
+              metadata: { script: name, command: cmd.substring(0, 200) },
+            });
+          } else if (/https?:\/\/|ftp:\/\//.test(cmd)) {
+            findings.push({
+              scanner: 'dependency_scanner',
+              category: 'dangerous_install_script',
+              description: 'Install script references external URL — review for supply chain safety',
+              risk: 'HIGH',
+              metadata: { script: name, command: cmd.substring(0, 200) },
+            });
+          }
+        }
+      }
+    }
+
+    return findings;
+  }
+
+  private _scanPyproject(content: string): Finding[] {
+    const findings: Finding[] = [];
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line || line.startsWith('#')) continue;
+      const lineNum = i + 1;
+
+      const depMatch = line.match(/^"?([a-zA-Z0-9_.-]+)"?\s*[=<>~!]/);
+      if (depMatch) {
+        const pkgName = depMatch[1].toLowerCase();
+        if (_KNOWN_MALICIOUS_PKGS.has(pkgName)) {
+          findings.push({
+            scanner: 'dependency_scanner',
+            category: 'malicious_package',
+            description: `Known malicious package: '${pkgName}' — removed from registry for malware`,
+            risk: 'CRITICAL',
+            metadata: { line: lineNum, package: pkgName },
+          });
+        }
+        this._checkTyposquat(pkgName, lineNum, findings);
+      }
+
+      this._checkUrls(line, lineNum, findings);
+    }
+
+    return findings;
+  }
+
+  private _checkTyposquat(pkgName: string, lineNum: number, findings: Finding[]): void {
+    for (const [legit, squats] of Object.entries(_TYPOSQUAT_MAP)) {
+      if (squats.includes(pkgName)) {
+        findings.push({
+          scanner: 'dependency_scanner',
+          category: 'typosquat',
+          description: `Possible typosquat: '${pkgName}' looks like '${legit}' — verify package name`,
+          risk: 'CRITICAL',
+          metadata: { line: lineNum, package: pkgName, likely_intended: legit },
+        });
+        return;
+      }
+    }
+  }
+
+  private _checkUrls(line: string, lineNum: number, findings: Finding[]): void {
+    for (const { pattern, risk, description } of _SUSPICIOUS_URLS) {
+      const re = new RegExp(pattern.source, pattern.flags);
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(line)) !== null) {
+        findings.push({
+          scanner: 'dependency_scanner',
+          category: 'suspicious_url',
+          description,
+          risk,
+          metadata: { line: lineNum, match: match[0].substring(0, 200) },
+        });
+      }
+    }
+  }
+}
+
 export default SentinelGuard;

