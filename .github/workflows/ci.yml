@@ -31,3 +31,37 @@ jobs:
         run: |
           pip install mypy
           mypy sentinel/ --ignore-missing-imports --no-error-summary || true
+
+      - name: Run benchmark
+        if: matrix.python-version == '3.12'
+        run: |
+          python -c "
+          from sentinel.benchmarks import run_benchmark
+          result = run_benchmark()
+          print(result.summary())
+          assert result.accuracy == 1.0, f'Benchmark accuracy dropped: {result.accuracy}'
+          assert result.false_positives == 0, f'False positives: {result.false_positives}'
+          assert result.false_negatives == 0, f'False negatives: {result.false_negatives}'
+          "
+
+  test-js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: sdk-js
+        run: npm install
+
+      - name: Type check
+        working-directory: sdk-js
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        working-directory: sdk-js
+        run: npx tsx --test src/index.test.ts
