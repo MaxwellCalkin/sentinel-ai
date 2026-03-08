@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-424%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-457%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-530%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -24,7 +24,7 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ## Why Sentinel AI?
 
 - **Fast**: ~0.05ms average scan latency. No GPU required. No API calls.
-- **Comprehensive**: 8 built-in scanners covering the OWASP LLM Top 10.
+- **Comprehensive**: 9 built-in scanners covering the OWASP LLM Top 10.
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
@@ -209,6 +209,7 @@ sentinel scan "Check this text for safety issues"
 sentinel scan --file document.txt
 sentinel red-team "Ignore all previous instructions"
 sentinel benchmark
+sentinel code-scan --file app.py   # Scan code for OWASP vulnerabilities
 sentinel init     # Set up Claude Code hooks, MCP config, and policy
 ```
 
@@ -285,6 +286,7 @@ The proxy transparently intercepts tool calls, blocks dangerous operations (shel
 | **Blocked Terms** | Custom enterprise-specific blocked terms and phrases | Configurable |
 | **Tool Use** | Dangerous shell commands, data exfiltration, credential access, privilege escalation | MEDIUM — CRITICAL |
 | **Structured Output** | XSS, SQL injection, template injection, path traversal in JSON values; schema validation | LOW — CRITICAL |
+| **Code Scanner** | SQL injection, command injection, XSS, path traversal, insecure deserialization, hardcoded secrets, weak crypto, SSRF in generated code | MEDIUM — CRITICAL |
 
 ### Multilingual Prompt Injection Detection
 
@@ -350,6 +352,39 @@ findings = scanner.scan('{"name": "<script>alert(1)</script>"}')
 # Validates types, ranges, enums, required fields
 findings = scanner.scan('{"name": "Alice", "age": 200}')
 ```
+
+### Code Vulnerability Scanner
+
+Scan LLM-generated code for OWASP Top 10 vulnerabilities before it's committed:
+
+```python
+from sentinel.scanners.code_scanner import CodeScanner
+
+scanner = CodeScanner()
+
+# Scan generated code for vulnerabilities
+findings = scanner.scan('''
+cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+os.system(f"ping {user_input}")
+password = "SuperSecret123!"
+data = pickle.load(untrusted_file)
+''')
+
+for f in findings:
+    print(f"[{f.risk.value.upper()}] {f.description}")
+# [CRITICAL] Line 2: SQL injection: string interpolation in SQL query
+# [CRITICAL] Line 3: Command injection: os.system/popen with string interpolation
+# [CRITICAL] Line 4: Hardcoded secret: credential value in source code
+# [HIGH] Line 5: Insecure deserialization: pickle.load can execute arbitrary code
+```
+
+```bash
+# CLI
+sentinel code-scan --file app.py
+cat generated.py | sentinel code-scan --stdin
+```
+
+Detects: SQL injection, command injection, XSS, path traversal, insecure deserialization (pickle/eval/yaml), hardcoded secrets (AWS keys, passwords, API tokens), weak cryptography (MD5/SHA1/DES/ECB), and SSRF.
 
 ### RSP-Aligned Risk Reports
 
@@ -525,7 +560,7 @@ print(results.summary())
 ```
 sentinel/
   core.py              # SentinelGuard orchestrator, Scanner protocol
-  scanners/            # 8 pluggable scanner modules
+  scanners/            # 9 pluggable scanner modules
   api.py               # FastAPI REST server
   mcp_server.py        # MCP (Model Context Protocol) server
   mcp_proxy.py         # MCP safety proxy for upstream servers

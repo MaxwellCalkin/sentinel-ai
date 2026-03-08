@@ -183,6 +183,49 @@ def cmd_hook(args: argparse.Namespace) -> int:
     return run_hook()
 
 
+def cmd_code_scan(args: argparse.Namespace) -> int:
+    from sentinel.scanners.code_scanner import CodeScanner
+
+    scanner = CodeScanner()
+
+    if args.stdin:
+        code = sys.stdin.read()
+        filename = args.filename or "stdin"
+    elif args.file:
+        code = Path(args.file).read_text(encoding="utf-8")
+        filename = args.file
+    else:
+        print("Error: provide --file or --stdin", file=sys.stderr)
+        return 1
+
+    findings = scanner.scan(code, filename=filename)
+
+    if args.format == "json":
+        print(json.dumps([
+            {
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.metadata.get("line"),
+                "match": f.metadata.get("match", ""),
+            }
+            for f in findings
+        ], indent=2))
+    else:
+        if not findings:
+            print(f"No vulnerabilities found in {filename}")
+        else:
+            print(f"Found {len(findings)} vulnerability(ies) in {filename}:\n")
+            for f in findings:
+                print(f"  [{f.risk.value.upper()}] {f.description}")
+                print(f"    Category: {f.category}")
+                if f.metadata.get("match"):
+                    print(f"    Match: {f.metadata['match'][:80]}")
+                print()
+
+    return 1 if any(f.risk >= RiskLevel.HIGH for f in findings) else 0
+
+
 def cmd_mcp_proxy(args: argparse.Namespace) -> int:
     from sentinel.mcp_proxy import run_proxy
     from sentinel.core import RiskLevel
@@ -259,6 +302,17 @@ def main(argv: list[str] | None = None) -> int:
         "--no-policy", action="store_true", help="Skip policy.yaml creation"
     )
 
+    # code-scan command
+    cs_parser = subparsers.add_parser(
+        "code-scan", help="Scan source code for OWASP vulnerabilities"
+    )
+    cs_parser.add_argument("--file", "-f", help="Source file to scan")
+    cs_parser.add_argument("--stdin", action="store_true", help="Read from stdin")
+    cs_parser.add_argument("--filename", help="Filename hint for language detection")
+    cs_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # hook command (for Claude Code hooks integration)
     subparsers.add_parser(
         "hook", help="Run as a Claude Code PreToolUse hook (reads event from stdin)"
@@ -297,6 +351,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_init(args)
     elif args.command == "hook":
         return cmd_hook(args)
+    elif args.command == "code-scan":
+        return cmd_code_scan(args)
     elif args.command == "mcp-proxy":
         return cmd_mcp_proxy(args)
     elif args.command == "serve":
