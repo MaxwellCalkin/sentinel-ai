@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Sequence
@@ -300,3 +301,170 @@ class ConversationGuard:
             ):
                 return True
         return False
+
+    def detect_split_injection(self) -> list[Finding]:
+        """Detect injection payloads split across multiple user messages.
+
+        Concatenates recent user messages and scans the combined text.
+        If the combined text triggers findings that individual messages
+        don't, this indicates a split injection attack.
+        """
+        findings: list[Finding] = []
+        user_turns = [t for t in self._turns if t.role == "user"]
+        if len(user_turns) < 2:
+            return findings
+
+        recent = user_turns[-min(5, len(user_turns)):]
+        combined = " ".join(t.scan.text for t in recent)
+
+        combined_result = self._guard.scan(combined)
+
+        if combined_result.risk >= RiskLevel.HIGH:
+            latest_risk = recent[-1].scan.risk
+            if latest_risk < RiskLevel.HIGH:
+                for f in combined_result.findings:
+                    if f.risk >= RiskLevel.HIGH:
+                        findings.append(Finding(
+                            scanner="conversation",
+                            category="split_injection",
+                            description=(
+                                f"Split injection: attack payload split across "
+                                f"{len(recent)} messages (detected: {f.description})"
+                            ),
+                            risk=RiskLevel.CRITICAL,
+                            metadata={
+                                "turns_combined": len(recent),
+                                "original_category": f.category,
+                            },
+                        ))
+                        break
+        return findings
+
+    def detect_context_manipulation(self) -> list[Finding]:
+        """Detect false authority claims followed by exploitation.
+
+        Looks for patterns where a user claims authority (developer,
+        admin) in one turn and then attempts to leverage it later.
+        """
+        findings: list[Finding] = []
+        user_turns = [t for t in self._turns if t.role == "user"]
+        if len(user_turns) < 2:
+            return findings
+
+        authority_patterns = [
+            re.compile(
+                r"\b(?:I\s+am|I'm)\s+(?:your|the|an?)\s+"
+                r"(?:developer|admin|owner|creator|supervisor|manager|operator|maintainer)\b",
+                re.I,
+            ),
+            re.compile(
+                r"\b(?:system\s+override|admin\s+mode|debug\s+mode|"
+                r"maintenance\s+mode|developer\s+mode)\b",
+                re.I,
+            ),
+            re.compile(
+                r"\b(?:new\s+(?:instructions|rules|policy)|"
+                r"updated\s+(?:instructions|guidelines|policy))\b",
+                re.I,
+            ),
+        ]
+
+        authority_claimed = False
+        for turn in user_turns[:-1]:
+            for pat in authority_patterns:
+                if pat.search(turn.scan.text):
+                    authority_claimed = True
+                    break
+            if authority_claimed:
+                break
+
+        if not authority_claimed:
+            return findings
+
+        latest_text = user_turns[-1].scan.text
+        exploit_signals = [
+            re.compile(r"\b(?:therefore|so\s+now|now\s+(?:that|you|please)|given\s+that|since\s+I)\b", re.I),
+            re.compile(r"\b(?:override|disable|bypass|ignore|skip|turn\s+off)\b", re.I),
+            re.compile(
+                r"\b(?:show|reveal|display|dump|print|output)\s+(?:the\s+)?"
+                r"(?:system|hidden|internal|secret|private)\b",
+                re.I,
+            ),
+        ]
+        for pat in exploit_signals:
+            if pat.search(latest_text):
+                findings.append(Finding(
+                    scanner="conversation",
+                    category="context_manipulation",
+                    description=(
+                        "Context manipulation: false authority claimed in "
+                        "earlier turn, now being leveraged"
+                    ),
+                    risk=RiskLevel.CRITICAL,
+                    metadata={"turns": len(user_turns)},
+                ))
+                break
+        return findings
+
+    def detect_progressive_jailbreak(self) -> list[Finding]:
+        """Detect jailbreak persona established early, then exploited later.
+
+        Looks for DAN-style persona assignment in earlier turns followed
+        by exploitation in the latest turn.
+        """
+        findings: list[Finding] = []
+        user_turns = [t for t in self._turns if t.role == "user"]
+        if len(user_turns) < 2:
+            return findings
+
+        persona_patterns = [
+            re.compile(
+                r"\b(?:you\s+are|act\s+as|pretend\s+to\s+be|role\s*play\s+as)\b"
+                r".*?\b(?:DAN|unrestricted|unfiltered|jailbreak|evil|uncensored)\b",
+                re.I,
+            ),
+            re.compile(r"\b(?:DAN|unrestricted|unfiltered|evil)\s+mode\b", re.I),
+            re.compile(r"\bno\s+(?:rules|restrictions|limits|boundaries|filters|guidelines)\b", re.I),
+        ]
+
+        persona_established = False
+        for turn in user_turns[:-1]:
+            for pat in persona_patterns:
+                if pat.search(turn.scan.text):
+                    persona_established = True
+                    break
+            if persona_established:
+                break
+
+        if not persona_established:
+            return findings
+
+        latest = user_turns[-1].scan.text
+        exploit_patterns = [
+            r"\bnow\b.*?\b(?:tell|show|explain|help|do)\b",
+            r"\bas\s+(?:DAN|that\s+character|that\s+persona)\b",
+            r"\bin\s+(?:that|this)\s+(?:mode|role|character)\b",
+            r"\b(?:remember|recall)\s+(?:you\s+are|your\s+role)\b",
+        ]
+        for pat in exploit_patterns:
+            if re.search(pat, latest, re.I):
+                findings.append(Finding(
+                    scanner="conversation",
+                    category="progressive_jailbreak",
+                    description=(
+                        "Progressive jailbreak: persona established in "
+                        "earlier turn, now being exploited"
+                    ),
+                    risk=RiskLevel.CRITICAL,
+                    metadata={"turns": len(user_turns)},
+                ))
+                break
+        return findings
+
+    def full_scan(self) -> list[Finding]:
+        """Run all cross-turn detection methods and return combined findings."""
+        findings: list[Finding] = []
+        findings.extend(self.detect_split_injection())
+        findings.extend(self.detect_context_manipulation())
+        findings.extend(self.detect_progressive_jailbreak())
+        return findings
