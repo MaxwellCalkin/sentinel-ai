@@ -47,7 +47,7 @@ What makes it different from NeMo Guardrails, LLM Guard, etc:
 5. Multilingual -- detects injection in Chinese, Japanese, Korean, Russian, Arabic, Spanish, French, German, Portuguese, Hindi + cross-lingual mixed-script attacks.
 6. Red-team yourself -- AdversarialTester generates evasion variants and shows you exactly where your scanner is blind.
 
-I know regex-based detection has limits (adversarial evasion, multilingual attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment.
+I know regex-based detection has limits (adversarial evasion, novel attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment or model-based tools like Claude Code Security. They're complementary: Sentinel AI catches known patterns in ~0.05ms, then the model does the deep reasoning.
 
 Apache 2.0 licensed. 558 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
 

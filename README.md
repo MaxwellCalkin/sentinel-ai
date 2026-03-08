@@ -28,6 +28,7 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
+- **Complementary to model-based security**: Use as a deterministic first-pass filter alongside AI-powered tools like Claude Code Security. Catches known attack patterns instantly so the model can focus on harder security questions.
 
 ## Architecture
 
