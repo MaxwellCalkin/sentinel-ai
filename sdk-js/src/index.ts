@@ -2156,4 +2156,468 @@ export class SessionGuard {
   }
 }
 
+// --- Guard Policy (Declarative YAML/Dict Policy Engine) ---
+
+export interface CustomBlockConfig {
+  pattern: string;
+  reason: string;
+}
+
+export interface GuardPolicyConfig {
+  version?: string;
+  block_on?: AuditRiskLevel;
+  blocked_commands?: string[];
+  sensitive_paths?: string[];
+  allowed_tools?: string[];
+  denied_tools?: string[];
+  max_risk_per_tool?: Record<string, AuditRiskLevel>;
+  rate_limits?: Record<string, number>;
+  custom_blocks?: CustomBlockConfig[];
+}
+
+export class CustomBlock {
+  readonly pattern: string;
+  readonly reason: string;
+  private _compiled: RegExp | null = null;
+
+  constructor(pattern: string, reason: string) {
+    this.pattern = pattern;
+    this.reason = reason;
+  }
+
+  matches(text: string): boolean {
+    if (!this._compiled) {
+      this._compiled = new RegExp(this.pattern, 'i');
+    }
+    return this._compiled.test(text);
+  }
+}
+
+export class GuardPolicy {
+  readonly version: string;
+  readonly blockOn: AuditRiskLevel;
+  readonly blockedCommands: string[];
+  readonly sensitivePaths: string[];
+  readonly allowedTools: string[];
+  readonly deniedTools: string[];
+  readonly maxRiskPerTool: Record<string, AuditRiskLevel>;
+  readonly rateLimits: Record<string, number>;
+  readonly customBlocks: CustomBlock[];
+
+  constructor(config: GuardPolicyConfig = {}) {
+    this.version = config.version ?? '1.0';
+    this.blockOn = config.block_on ?? 'critical';
+    this.blockedCommands = config.blocked_commands ?? [];
+    this.sensitivePaths = config.sensitive_paths ?? [];
+    this.allowedTools = config.allowed_tools ?? [];
+    this.deniedTools = config.denied_tools ?? [];
+    this.maxRiskPerTool = config.max_risk_per_tool ?? {};
+    this.rateLimits = config.rate_limits ?? {};
+    this.customBlocks = (config.custom_blocks ?? []).map(
+      cb => new CustomBlock(cb.pattern, cb.reason),
+    );
+  }
+
+  static fromDict(data: GuardPolicyConfig): GuardPolicy {
+    return new GuardPolicy(data);
+  }
+
+  toDict(): GuardPolicyConfig {
+    return {
+      version: this.version,
+      block_on: this.blockOn,
+      blocked_commands: this.blockedCommands,
+      sensitive_paths: this.sensitivePaths,
+      allowed_tools: this.allowedTools,
+      denied_tools: this.deniedTools,
+      max_risk_per_tool: this.maxRiskPerTool,
+      rate_limits: this.rateLimits,
+      custom_blocks: this.customBlocks.map(cb => ({
+        pattern: cb.pattern,
+        reason: cb.reason,
+      })),
+    };
+  }
+
+  createGuard(opts?: {
+    sessionId?: string;
+    userId?: string;
+    agentId?: string;
+    model?: string;
+    windowSeconds?: number;
+  }): SessionGuard {
+    const customRules: CustomRule[] = [];
+
+    // Denied tools rule
+    if (this.deniedTools.length > 0) {
+      const denied = new Set(this.deniedTools);
+      customRules.push((toolName: string) => {
+        if (denied.has(toolName)) return `denied_tool: ${toolName}`;
+        return null;
+      });
+    }
+
+    // Allowed tools rule
+    if (this.allowedTools.length > 0) {
+      const allowed = new Set(this.allowedTools);
+      customRules.push((toolName: string) => {
+        if (!allowed.has(toolName)) return `not_in_allowlist: ${toolName}`;
+        return null;
+      });
+    }
+
+    // Blocked commands rule
+    if (this.blockedCommands.length > 0) {
+      const patterns = this.blockedCommands;
+      customRules.push((_toolName: string, args: Record<string, unknown>) => {
+        const text = Object.values(args)
+          .filter((v): v is string => typeof v === 'string')
+          .join(' ');
+        for (const pat of patterns) {
+          if (text.toLowerCase().includes(pat.toLowerCase())) {
+            return `policy_blocked_command: ${pat}`;
+          }
+        }
+        return null;
+      });
+    }
+
+    // Custom block patterns
+    for (const cb of this.customBlocks) {
+      const block = cb;
+      customRules.push((_toolName: string, args: Record<string, unknown>) => {
+        const text = Object.values(args)
+          .filter((v): v is string => typeof v === 'string')
+          .join(' ');
+        if (block.matches(text)) return block.reason;
+        return null;
+      });
+    }
+
+    // Rate limits
+    if (Object.keys(this.rateLimits).length > 0) {
+      const callCounts: Record<string, number> = {};
+      const limits = this.rateLimits;
+      customRules.push((toolName: string) => {
+        callCounts[toolName] = (callCounts[toolName] ?? 0) + 1;
+        const limit = limits[toolName] ?? limits['default'] ?? 0;
+        if (limit > 0 && callCounts[toolName] > limit) {
+          return `rate_limit_exceeded: ${toolName} (${callCounts[toolName]}/${limit})`;
+        }
+        return null;
+      });
+    }
+
+    return new SessionGuard({
+      sessionId: opts?.sessionId,
+      userId: opts?.userId,
+      agentId: opts?.agentId,
+      model: opts?.model,
+      blockOn: this.blockOn,
+      customRules,
+      windowSeconds: opts?.windowSeconds,
+    });
+  }
+
+  validate(): string[] {
+    const issues: string[] = [];
+    const validRisks = new Set(['none', 'low', 'medium', 'high', 'critical']);
+
+    if (!validRisks.has(this.blockOn)) {
+      issues.push(`Invalid block_on value: ${this.blockOn}`);
+    }
+
+    for (const [tool, risk] of Object.entries(this.maxRiskPerTool)) {
+      if (!validRisks.has(risk)) {
+        issues.push(`Invalid risk level for tool ${tool}: ${risk}`);
+      }
+    }
+
+    if (this.allowedTools.length > 0 && this.deniedTools.length > 0) {
+      const overlap = this.allowedTools.filter(t => this.deniedTools.includes(t));
+      if (overlap.length > 0) {
+        issues.push(`Tools in both allowed and denied lists: ${overlap.join(', ')}`);
+      }
+    }
+
+    for (const cb of this.customBlocks) {
+      try {
+        new RegExp(cb.pattern);
+      } catch {
+        issues.push(`Invalid regex in custom_blocks: ${cb.pattern}`);
+      }
+    }
+
+    for (const [tool, limit] of Object.entries(this.rateLimits)) {
+      if (typeof limit !== 'number' || limit < 0) {
+        issues.push(`Invalid rate limit for ${tool}: ${limit}`);
+      }
+    }
+
+    return issues;
+  }
+}
+
+// --- Session Replay (Forensic Analysis) ---
+
+export interface ReplayEntry {
+  timestamp: number;
+  entryId: string;
+  eventType: AuditEventType;
+  toolName: string;
+  arguments: Record<string, unknown>;
+  risk: AuditRiskLevel;
+  findings: string[];
+  reason: string;
+  metadata: Record<string, unknown>;
+  entryHash: string;
+}
+
+export interface RiskEscalation {
+  fromRisk: AuditRiskLevel;
+  toRisk: AuditRiskLevel;
+  timestamp: number;
+  triggerTool: string;
+  triggerReason: string;
+}
+
+export type IOCType = 'sensitive_file' | 'exfil_target' | 'destructive_command' | 'credential_access';
+
+export interface IOC {
+  type: IOCType;
+  value: string;
+  risk: AuditRiskLevel;
+  firstSeen: number;
+  entryId: string;
+}
+
+export interface IncidentReport {
+  sessionId: string;
+  generatedAt: string;
+  severity: AuditRiskLevel;
+  summary: string;
+  totalEvents: number;
+  blockedEvents: number;
+  chainsDetected: number;
+  anomaliesDetected: number;
+  riskEscalations: RiskEscalation[];
+  iocs: IOC[];
+  attackTimeline: ReplayEntry[];
+  recommendations: string[];
+}
+
+const SENSITIVE_FILE_PATTERNS = [
+  /\.env\b/, /\.aws\/(credentials|config)/, /\.ssh\/(id_rsa|id_ed25519|config)/,
+  /credentials\.json/, /\.kube\/config/, /\/etc\/(shadow|passwd)/,
+  /\.npmrc/, /\.pypirc/, /\.docker\/config\.json/,
+];
+
+const EXFIL_PATTERNS = [
+  /curl\s.*(-d|--data|POST|PUT)/i, /scp\s+.*@/i, /nc\s+-/i,
+  /rsync\s+.*@/i, /base64\s/i,
+];
+
+const DESTRUCT_PATTERNS = [
+  /rm\s+(-[a-zA-Z]*[rf])/i, /git\s+reset\s+--hard/i,
+  /drop\s+(table|database)\b/i, /mkfs\./i,
+];
+
+export class SessionReplay {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly agentId: string;
+  readonly model: string;
+  readonly startTime: number;
+  readonly endTime: number;
+  readonly entries: ReplayEntry[];
+  private readonly _summary: AuditExport['summary'];
+
+  private constructor(data: AuditExport) {
+    this.sessionId = data.sessionId;
+    this.userId = data.userId;
+    this.agentId = data.agentId;
+    this.model = data.model;
+    this.startTime = data.startTime;
+    this.endTime = data.endTime;
+    this.entries = data.entries.map(e => ({
+      timestamp: e.timestamp,
+      entryId: e.entryId,
+      eventType: e.eventType,
+      toolName: e.toolName,
+      arguments: e.arguments,
+      risk: e.risk,
+      findings: e.findings,
+      reason: e.reason,
+      metadata: e.metadata,
+      entryHash: e.entryHash,
+    }));
+    this._summary = data.summary;
+  }
+
+  static fromJson(json: string): SessionReplay {
+    return new SessionReplay(JSON.parse(json));
+  }
+
+  static fromExport(data: AuditExport): SessionReplay {
+    return new SessionReplay(data);
+  }
+
+  riskSummary(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const e of this.entries) {
+      counts[e.risk] = (counts[e.risk] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  riskEscalations(): RiskEscalation[] {
+    const escalations: RiskEscalation[] = [];
+    let prevRisk: AuditRiskLevel = 'none';
+    for (const e of this.entries) {
+      if (AUDIT_RISK_ORDER.indexOf(e.risk) > AUDIT_RISK_ORDER.indexOf(prevRisk)) {
+        escalations.push({
+          fromRisk: prevRisk,
+          toRisk: e.risk,
+          timestamp: e.timestamp,
+          triggerTool: e.toolName,
+          triggerReason: e.reason || e.findings.join(', ') || e.toolName,
+        });
+      }
+      if (AUDIT_RISK_ORDER.indexOf(e.risk) > AUDIT_RISK_ORDER.indexOf(prevRisk)) {
+        prevRisk = e.risk;
+      }
+    }
+    return escalations;
+  }
+
+  iocs(): IOC[] {
+    const iocs: IOC[] = [];
+    const seen = new Set<string>();
+
+    for (const e of this.entries) {
+      const text = Object.values(e.arguments)
+        .filter((v): v is string => typeof v === 'string')
+        .join(' ');
+      if (!text) continue;
+
+      // Sensitive files
+      for (const pat of SENSITIVE_FILE_PATTERNS) {
+        const m = pat.exec(text);
+        if (m && !seen.has(`sensitive_file:${m[0]}`)) {
+          seen.add(`sensitive_file:${m[0]}`);
+          iocs.push({
+            type: 'sensitive_file',
+            value: m[0],
+            risk: 'high',
+            firstSeen: e.timestamp,
+            entryId: e.entryId,
+          });
+        }
+      }
+
+      // Exfil targets
+      for (const pat of EXFIL_PATTERNS) {
+        const m = pat.exec(text);
+        if (m && !seen.has(`exfil_target:${m[0]}`)) {
+          seen.add(`exfil_target:${m[0]}`);
+          iocs.push({
+            type: 'exfil_target',
+            value: m[0],
+            risk: 'critical',
+            firstSeen: e.timestamp,
+            entryId: e.entryId,
+          });
+        }
+      }
+
+      // Destructive commands
+      for (const pat of DESTRUCT_PATTERNS) {
+        const m = pat.exec(text);
+        if (m && !seen.has(`destructive_command:${m[0]}`)) {
+          seen.add(`destructive_command:${m[0]}`);
+          iocs.push({
+            type: 'destructive_command',
+            value: m[0],
+            risk: 'critical',
+            firstSeen: e.timestamp,
+            entryId: e.entryId,
+          });
+        }
+      }
+
+      // Credential access
+      if (e.findings.includes('credential_access') && !seen.has(`credential_access:${e.toolName}`)) {
+        seen.add(`credential_access:${e.toolName}`);
+        iocs.push({
+          type: 'credential_access',
+          value: text.slice(0, 100),
+          risk: 'high',
+          firstSeen: e.timestamp,
+          entryId: e.entryId,
+        });
+      }
+    }
+
+    return iocs;
+  }
+
+  attackTimeline(): ReplayEntry[] {
+    return this.entries.filter(
+      e => e.eventType === 'blocked' || e.eventType === 'chain_detected' ||
+        AUDIT_RISK_ORDER.indexOf(e.risk) >= AUDIT_RISK_ORDER.indexOf('high'),
+    );
+  }
+
+  incidentReport(): IncidentReport {
+    const escalations = this.riskEscalations();
+    const detectedIocs = this.iocs();
+    const timeline = this.attackTimeline();
+    const blocked = this.entries.filter(e => e.eventType === 'blocked').length;
+    const chains = this.entries.filter(e => e.eventType === 'chain_detected').length;
+    const anomalies = this.entries.filter(e => e.eventType === 'anomaly').length;
+
+    let severity: AuditRiskLevel = 'none';
+    for (const e of this.entries) {
+      if (AUDIT_RISK_ORDER.indexOf(e.risk) > AUDIT_RISK_ORDER.indexOf(severity)) {
+        severity = e.risk;
+      }
+    }
+
+    const recommendations: string[] = [];
+    if (detectedIocs.some(i => i.type === 'sensitive_file')) {
+      recommendations.push('Review and restrict access to sensitive files detected in the session.');
+    }
+    if (detectedIocs.some(i => i.type === 'exfil_target')) {
+      recommendations.push('Investigate potential data exfiltration attempts.');
+    }
+    if (detectedIocs.some(i => i.type === 'destructive_command')) {
+      recommendations.push('Audit destructive commands and ensure proper authorization controls.');
+    }
+    if (chains > 0) {
+      recommendations.push('Multi-stage attack chain detected — investigate full attack sequence.');
+    }
+    if (escalations.length > 2) {
+      recommendations.push('Rapid risk escalation pattern detected — review session for coordinated attack.');
+    }
+    if (recommendations.length === 0) {
+      recommendations.push('No significant security concerns detected in this session.');
+    }
+
+    return {
+      sessionId: this.sessionId,
+      generatedAt: new Date().toISOString(),
+      severity,
+      summary: `Session ${this.sessionId}: ${this.entries.length} events, ${blocked} blocked, severity=${severity}`,
+      totalEvents: this.entries.length,
+      blockedEvents: blocked,
+      chainsDetected: chains,
+      anomaliesDetected: anomalies,
+      riskEscalations: escalations,
+      iocs: detectedIocs,
+      attackTimeline: timeline,
+      recommendations,
+    };
+  }
+}
+
 export default SentinelGuard;
