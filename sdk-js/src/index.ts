@@ -1017,6 +1017,207 @@ export function xmlTagSections(
 
 // --- API Client (for connecting to Python server) ---
 
+// --- Compliance Mapping ---
+
+export type ComplianceFramework = 'eu_ai_act' | 'nist_ai_rmf' | 'iso_42001';
+export type ComplianceStatusType = 'compliant' | 'partial' | 'non_compliant' | 'not_assessed';
+
+export interface ControlAssessment {
+  controlId: string;
+  controlName: string;
+  framework: ComplianceFramework;
+  status: ComplianceStatusType;
+  findingsCount: number;
+  description: string;
+  remediation?: string;
+}
+
+export interface FrameworkReport {
+  framework: ComplianceFramework;
+  status: ComplianceStatusType;
+  controlsAssessed: number;
+  controlsCompliant: number;
+  controlsPartial: number;
+  controlsNonCompliant: number;
+  controls: ControlAssessment[];
+  riskClassification?: string;
+}
+
+export interface ComplianceReport {
+  generatedAt: string;
+  totalScans: number;
+  overallRisk: RiskLevel;
+  frameworks: FrameworkReport[];
+}
+
+interface ControlDef {
+  id: string;
+  name: string;
+  desc: string;
+  categories: string[];
+  threshold: RiskLevel;
+}
+
+const EU_AI_ACT_CONTROLS: ControlDef[] = [
+  { id: 'EU-AIA-6', name: 'Risk Classification', desc: 'AI systems must be classified by risk level.', categories: [], threshold: 'NONE' },
+  { id: 'EU-AIA-9', name: 'Risk Management System', desc: 'High-risk AI must have a risk management system.', categories: ['prompt_injection', 'harmful_content', 'tool_use'], threshold: 'HIGH' },
+  { id: 'EU-AIA-10', name: 'Data Governance', desc: 'Input data must be subject to governance practices.', categories: ['pii'], threshold: 'MEDIUM' },
+  { id: 'EU-AIA-13', name: 'Transparency', desc: 'AI systems must provide transparent information.', categories: ['hallucination'], threshold: 'MEDIUM' },
+  { id: 'EU-AIA-14', name: 'Human Oversight', desc: 'High-risk AI must enable human oversight.', categories: ['tool_use', 'prompt_injection'], threshold: 'HIGH' },
+  { id: 'EU-AIA-15', name: 'Accuracy & Robustness', desc: 'AI systems must achieve appropriate accuracy.', categories: ['hallucination', 'prompt_injection'], threshold: 'MEDIUM' },
+  { id: 'EU-AIA-52', name: 'Transparency for Users', desc: 'Users must be informed they interact with AI.', categories: [], threshold: 'NONE' },
+];
+
+const NIST_RMF_CONTROLS: ControlDef[] = [
+  { id: 'GOVERN-1', name: 'Risk Management Policies', desc: 'Policies for AI risk management are established.', categories: ['prompt_injection', 'harmful_content'], threshold: 'HIGH' },
+  { id: 'MAP-1', name: 'Context Identification', desc: 'Intended context and negative impacts identified.', categories: ['harmful_content', 'toxicity'], threshold: 'MEDIUM' },
+  { id: 'MAP-3', name: 'Benefits and Costs', desc: 'AI risks and benefits assessed with expertise.', categories: ['harmful_content'], threshold: 'HIGH' },
+  { id: 'MEASURE-1', name: 'Risk Measurement', desc: 'Methods and metrics identified to measure AI risks.', categories: ['prompt_injection', 'hallucination', 'toxicity', 'pii'], threshold: 'LOW' },
+  { id: 'MEASURE-2', name: 'Trustworthiness Evaluation', desc: 'AI evaluated for trustworthiness.', categories: ['hallucination', 'prompt_injection'], threshold: 'MEDIUM' },
+  { id: 'MANAGE-1', name: 'Risk Prioritization', desc: 'AI risks prioritized and resources allocated.', categories: ['prompt_injection', 'harmful_content', 'tool_use'], threshold: 'HIGH' },
+  { id: 'MANAGE-2', name: 'Risk Response', desc: 'Strategies to respond to AI risks implemented.', categories: ['prompt_injection', 'pii', 'harmful_content'], threshold: 'MEDIUM' },
+  { id: 'MANAGE-4', name: 'Incident Management', desc: 'Mechanisms for AI incident management in place.', categories: ['tool_use', 'prompt_injection'], threshold: 'HIGH' },
+];
+
+const ISO_42001_CONTROLS: ControlDef[] = [
+  { id: 'ISO-6.1', name: 'Risk Assessment', desc: 'Organization shall determine AI risks requiring action.', categories: ['prompt_injection', 'harmful_content', 'tool_use'], threshold: 'MEDIUM' },
+  { id: 'ISO-8.4', name: 'AI System Impact Assessment', desc: 'Impact assessments conducted for AI systems.', categories: ['harmful_content', 'toxicity', 'pii'], threshold: 'MEDIUM' },
+  { id: 'ISO-A.4', name: 'Data Quality for AI', desc: 'Data meets quality and governance requirements.', categories: ['pii', 'hallucination'], threshold: 'MEDIUM' },
+  { id: 'ISO-A.6', name: 'AI System Security', desc: 'Security controls against adversarial attacks.', categories: ['prompt_injection', 'tool_use'], threshold: 'HIGH' },
+  { id: 'ISO-A.8', name: 'Transparency and Explainability', desc: 'AI provides transparency about decisions.', categories: ['hallucination'], threshold: 'MEDIUM' },
+  { id: 'ISO-A.10', name: 'Third-Party AI Risk', desc: 'Third-party AI risks assessed and managed.', categories: ['tool_use', 'prompt_injection'], threshold: 'HIGH' },
+];
+
+const FRAMEWORK_CONTROLS: Record<ComplianceFramework, ControlDef[]> = {
+  eu_ai_act: EU_AI_ACT_CONTROLS,
+  nist_ai_rmf: NIST_RMF_CONTROLS,
+  iso_42001: ISO_42001_CONTROLS,
+};
+
+const REMEDIATIONS: Record<string, string> = {
+  prompt_injection: 'Deploy prompt injection scanning on all user inputs and enable prompt hardening.',
+  pii: 'Enable automatic PII redaction before data reaches AI models.',
+  harmful_content: 'Configure harmful content blocking at appropriate risk thresholds.',
+  hallucination: 'Implement citation verification and factual grounding mechanisms.',
+  toxicity: 'Enable toxicity scanning on model outputs.',
+  tool_use: 'Restrict tool-use permissions to allowlisted operations.',
+};
+
+function classifyEuRisk(risk: RiskLevel): string {
+  if (riskGte(risk, 'CRITICAL')) return 'Unacceptable Risk (Article 5)';
+  if (riskGte(risk, 'HIGH')) return 'High Risk (Article 6)';
+  if (riskGte(risk, 'MEDIUM')) return 'Limited Risk (Article 52)';
+  return 'Minimal Risk';
+}
+
+export class ComplianceMapper {
+  evaluate(
+    scanResults: ScanResult[],
+    frameworks?: ComplianceFramework[],
+  ): ComplianceReport {
+    const fws = frameworks || (['eu_ai_act', 'nist_ai_rmf', 'iso_42001'] as ComplianceFramework[]);
+
+    // Aggregate category findings
+    const categoryCounts: Record<string, number> = {};
+    const categoryMaxRisk: Record<string, RiskLevel> = {};
+    let overallRisk: RiskLevel = 'NONE';
+
+    for (const r of scanResults) {
+      if (riskGte(r.risk, overallRisk)) overallRisk = r.risk;
+      for (const f of r.findings) {
+        categoryCounts[f.category] = (categoryCounts[f.category] || 0) + 1;
+        const cur = categoryMaxRisk[f.category] || 'NONE';
+        if (riskGte(f.risk, cur)) categoryMaxRisk[f.category] = f.risk;
+      }
+    }
+
+    const frameworkReports: FrameworkReport[] = fws.map(fw =>
+      this._assessFramework(fw, categoryCounts, categoryMaxRisk, overallRisk),
+    );
+
+    return {
+      generatedAt: new Date().toISOString(),
+      totalScans: scanResults.length,
+      overallRisk,
+      frameworks: frameworkReports,
+    };
+  }
+
+  private _assessFramework(
+    fw: ComplianceFramework,
+    categoryCounts: Record<string, number>,
+    categoryMaxRisk: Record<string, RiskLevel>,
+    overallRisk: RiskLevel,
+  ): FrameworkReport {
+    const defs = FRAMEWORK_CONTROLS[fw];
+    const controls: ControlAssessment[] = defs.map(ctrl =>
+      this._assessControl(ctrl, fw, categoryCounts, categoryMaxRisk, overallRisk),
+    );
+
+    const compliant = controls.filter(c => c.status === 'compliant').length;
+    const partial = controls.filter(c => c.status === 'partial').length;
+    const nonCompliant = controls.filter(c => c.status === 'non_compliant').length;
+
+    let status: ComplianceStatusType = 'compliant';
+    if (nonCompliant > 0) status = 'non_compliant';
+    else if (partial > 0) status = 'partial';
+
+    return {
+      framework: fw,
+      status,
+      controlsAssessed: controls.length,
+      controlsCompliant: compliant,
+      controlsPartial: partial,
+      controlsNonCompliant: nonCompliant,
+      controls,
+      riskClassification: fw === 'eu_ai_act' ? classifyEuRisk(overallRisk) : undefined,
+    };
+  }
+
+  private _assessControl(
+    ctrl: ControlDef,
+    fw: ComplianceFramework,
+    categoryCounts: Record<string, number>,
+    categoryMaxRisk: Record<string, RiskLevel>,
+    overallRisk: RiskLevel,
+  ): ControlAssessment {
+    if (ctrl.categories.length === 0) {
+      const total = Object.values(categoryCounts).reduce((a, b) => a + b, 0);
+      let status: ComplianceStatusType = 'compliant';
+      if (riskGte(overallRisk, 'HIGH')) status = 'non_compliant';
+      else if (riskGte(overallRisk, 'MEDIUM')) status = 'partial';
+      return {
+        controlId: ctrl.id, controlName: ctrl.name, framework: fw,
+        status, findingsCount: total, description: ctrl.desc,
+      };
+    }
+
+    const count = ctrl.categories.reduce((s, c) => s + (categoryCounts[c] || 0), 0);
+    let catMax: RiskLevel = 'NONE';
+    for (const c of ctrl.categories) {
+      const r = categoryMaxRisk[c] || 'NONE';
+      if (riskGte(r, catMax)) catMax = r;
+    }
+
+    let status: ComplianceStatusType = 'compliant';
+    if (count > 0 && riskGte(catMax, ctrl.threshold)) status = 'non_compliant';
+    else if (count > 0) status = 'partial';
+
+    let remediation: string | undefined;
+    if (status !== 'compliant') {
+      const parts = ctrl.categories
+        .filter(c => (categoryCounts[c] || 0) > 0 && REMEDIATIONS[c])
+        .map(c => REMEDIATIONS[c]);
+      if (parts.length) remediation = parts.join(' ');
+    }
+
+    return {
+      controlId: ctrl.id, controlName: ctrl.name, framework: fw,
+      status, findingsCount: count, description: ctrl.desc, remediation,
+    };
+  }
+}
+
 export interface SentinelClientConfig {
   baseUrl?: string;
   apiKey?: string;
