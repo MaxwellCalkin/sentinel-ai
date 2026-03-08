@@ -597,6 +597,23 @@ def cmd_project_scan(args: argparse.Namespace) -> int:
     return 1 if report.critical_count > 0 else 0
 
 
+def cmd_badge(args: argparse.Namespace) -> int:
+    """Generate a security score badge SVG."""
+    from sentinel.badge import generate_badge_for_project
+
+    project_dir = Path(args.dir) if args.dir else None
+    output = Path(args.output) if args.output else None
+
+    svg, score = generate_badge_for_project(project_dir, output=output)
+
+    if output:
+        print(f"Badge generated: {output} (score: {score}/100)")
+    else:
+        print(svg)
+
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -807,6 +824,13 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # badge command
+    badge_parser = subparsers.add_parser(
+        "badge", help="Generate a security score badge SVG for your README"
+    )
+    badge_parser.add_argument("--dir", "-d", help="Project directory (default: current directory)")
+    badge_parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -845,6 +869,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_secrets_scan(args)
     elif args.command == "project-scan":
         return cmd_project_scan(args)
+    elif args.command == "badge":
+        return cmd_badge(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
