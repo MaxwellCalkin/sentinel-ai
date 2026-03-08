@@ -1,7 +1,7 @@
 # Follow-up Email Draft (send Wed March 11 if no reply)
 
 ## To: chrismacleod@anthropic.com
-## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK
+## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 481 tests)
 
 Hi Christopher,
 
@@ -26,7 +26,7 @@ https://github.com/MaxwellCalkin/sentinel-ai
 ---
 
 ## To: jblack@anthropic.com, vgupta@anthropic.com
-## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem
+## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem (v0.7.0)
 
 Hi James and Vishal,
 
