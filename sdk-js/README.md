@@ -81,6 +81,31 @@ if (result.blocked) {
 }
 ```
 
+## Production Features
+
+```typescript
+import { SentinelGuard, ScanCache, ScanMetrics, EvalRunner } from '@sentinel-ai/sdk';
+
+const guard = SentinelGuard.default();
+
+// LRU cache — skip re-scanning identical content
+const cache = new ScanCache(guard, 1024, 300_000); // maxsize, ttl (ms)
+cache.scan('user input'); // cached on repeat
+console.log(cache.stats); // { hits, misses, hitRate, size, maxsize }
+
+// Metrics — monitor block rate, latency, risk distribution
+const metrics = new ScanMetrics();
+metrics.record(guard.scan('input'));
+console.log(metrics.summary()); // { totalScans, blockRate, avgLatencyMs, ... }
+
+// Batch scanning
+const results = guard.scanBatch(['text1', 'text2', 'text3']);
+
+// Adversarial eval suite (55 cases, 6 categories)
+const runner = new EvalRunner();
+console.log(runner.formatReport(runner.runBuiltin()));
+```
+
 ## API Client
 
 For connecting to a Sentinel AI Python server:
