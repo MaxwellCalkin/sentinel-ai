@@ -19,7 +19,7 @@ from sentinel.scanners.obfuscation import ObfuscationScanner
 from sentinel.scanners.secrets_scanner import SecretsScanner
 from sentinel.harden import harden_prompt, fence_user_input, sandwich_wrap, xml_tag_sections, HardeningConfig
 
-__version__ = "0.8.4"
+__version__ = "0.9.0"
 
 __all__ = [
     "SentinelGuard",
