@@ -531,6 +531,21 @@ def cmd_dep_scan(args: argparse.Namespace) -> int:
     return 1 if has_critical else 0
 
 
+def cmd_project_scan(args: argparse.Namespace) -> int:
+    """Run comprehensive security scan on entire project."""
+    from sentinel.project_scanner import scan_project
+
+    project_dir = Path(args.dir) if args.dir else None
+    report = scan_project(project_dir)
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print(report.summary())
+
+    return 1 if report.critical_count > 0 else 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -718,6 +733,17 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # project-scan command
+    ps_parser = subparsers.add_parser(
+        "project-scan", help="Comprehensive security scan of entire project"
+    )
+    ps_parser.add_argument(
+        "--dir", "-d", help="Project directory to scan (default: current directory)"
+    )
+    ps_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -752,6 +778,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_audit(args)
     elif args.command == "dep-scan":
         return cmd_dep_scan(args)
+    elif args.command == "project-scan":
+        return cmd_project_scan(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
