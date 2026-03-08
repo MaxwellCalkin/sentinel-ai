@@ -25,6 +25,7 @@ from sentinel.threat_intel import ThreatFeed, ThreatCategory, Severity
 from sentinel.attack_chain import AttackChainDetector
 from sentinel.session_audit import SessionAudit, AuditEntry
 from sentinel.session_guard import SessionGuard, GuardVerdict
+from sentinel.session_replay import SessionReplay, IncidentReport
 
 __version__ = "0.12.0"
 
@@ -66,4 +67,6 @@ __all__ = [
     "AuditEntry",
     "SessionGuard",
     "GuardVerdict",
+    "SessionReplay",
+    "IncidentReport",
 ]
