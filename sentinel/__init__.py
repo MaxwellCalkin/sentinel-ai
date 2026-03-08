@@ -22,7 +22,7 @@ from sentinel.rate_guard import RateGuard
 from sentinel.compliance import ComplianceMapper, Framework, ComplianceStatus
 from sentinel.agent_monitor import AgentMonitor
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 
 __all__ = [
     "SentinelGuard",
