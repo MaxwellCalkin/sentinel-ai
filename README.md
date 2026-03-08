@@ -46,7 +46,7 @@ Then use `/sentinel-ai:scan`, `/sentinel-ai:check-pii`, and `/sentinel-ai:check-
 ### Python Package
 
 ```bash
-pip install sentinel-ai
+pip install sentinel-guardrails
 ```
 
 Or install directly from GitHub:
@@ -58,9 +58,9 @@ pip install git+https://github.com/MaxwellCalkin/sentinel-ai.git
 With optional integrations:
 
 ```bash
-pip install "sentinel-ai[api]"         # FastAPI server
-pip install "sentinel-ai[langchain]"   # LangChain integration
-pip install "sentinel-ai[llamaindex]"  # LlamaIndex integration
+pip install "sentinel-guardrails[api]"         # FastAPI server
+pip install "sentinel-guardrails[langchain]"   # LangChain integration
+pip install "sentinel-guardrails[llamaindex]"  # LlamaIndex integration
 ```
 
 ## Quick Start
@@ -198,7 +198,7 @@ curl -X POST http://localhost:8000/scan \
 ### Quick Setup
 
 ```bash
-pip install sentinel-ai
+pip install sentinel-guardrails
 sentinel init    # Auto-configures Claude Code hooks + MCP server + policy
 ```
 

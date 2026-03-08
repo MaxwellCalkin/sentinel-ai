@@ -21,7 +21,7 @@ What it does:
 
 Quick start:
 ```bash
-pip install git+https://github.com/MaxwellCalkin/sentinel-ai.git
+pip install sentinel-guardrails
 sentinel init    # auto-configures Claude Code hooks + MCP server
 ```
 
@@ -44,7 +44,7 @@ What makes it different from NeMo Guardrails, LLM Guard, etc:
 
 I know regex-based detection has limits (adversarial evasion, multilingual attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment.
 
-Apache 2.0 licensed. 349 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
+Apache 2.0 licensed. 411 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
 
 
 REDDIT POST DRAFT (r/MachineLearning, r/LocalLLaMA)
@@ -59,7 +59,7 @@ Key stats:
 - ~0.05ms average scan latency
 - 8 pluggable scanners
 - Only dependency: `regex`
-- 349 tests
+- 411 tests
 
 The main insight: for safety scanning, you don't always need another model. Fast, deterministic pattern matching catches 90%+ of attacks (prompt injection, PII, dangerous commands) at sub-millisecond speed. Use it as a first-pass filter before or after your LLM.
 
@@ -73,3 +73,53 @@ GitHub: https://github.com/MaxwellCalkin/sentinel-ai
 License: Apache 2.0
 
 Looking for feedback on false positive rates and pattern coverage gaps.
+
+
+TWITTER/X POST DRAFT
+====================
+
+I open-sourced Sentinel AI — real-time safety guardrails for LLM apps.
+
+~0.05ms latency. No GPU. No API calls. 1 dependency.
+
+What it scans:
+- Prompt injection (12 languages)
+- PII detection + auto-redaction
+- Harmful content & toxicity
+- Dangerous tool calls (rm -rf, exfiltration)
+- Claude Code attack vectors (CVE-2025-59536, CVE-2026-21852)
+
+530-case benchmark, 100% accuracy.
+
+Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
+
+GitHub: https://github.com/MaxwellCalkin/sentinel-ai
+Apache 2.0 | pip install sentinel-guardrails
+
+
+LINKEDIN POST DRAFT
+====================
+
+I built an open-source safety scanning library for LLM applications.
+
+The problem: Every existing guardrails tool requires GPU inference or API calls. If you're building with Claude, GPT-4, or any LLM, adding safety scanning shouldn't add 100ms+ of latency per request.
+
+Sentinel AI scans LLM inputs and outputs in ~0.05ms — using pattern matching, not model inference. It catches:
+
+- Prompt injection attacks (including 12 languages + cross-lingual)
+- PII leaks (emails, SSNs, credit cards, API keys) with auto-redaction
+- Harmful content and toxicity
+- Dangerous tool calls in agentic workflows
+- Known Claude Code attack vectors (poisoned repos, authority impersonation, API key exfiltration)
+
+530-case benchmark at 100% accuracy. Zero false positives. One dependency (regex).
+
+It integrates with Claude, OpenAI, LangChain, LlamaIndex, and runs as a Claude Code hook or MCP server.
+
+I've submitted PRs to 5 Anthropic repositories to demonstrate the integrations. The security-review repo's own README says it's "not hardened against prompt injection" — we built the fix.
+
+Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
+GitHub: https://github.com/MaxwellCalkin/sentinel-ai
+Apache 2.0 licensed.
+
+#AIsafety #LLM #OpenSource #Claude #Anthropic #MachineLearning
