@@ -412,6 +412,70 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0 if report.critical_count == 0 else 1
 
 
+def cmd_dep_scan(args: argparse.Namespace) -> int:
+    """Scan dependency files for supply chain attack patterns."""
+    from sentinel.scanners.dependency_scanner import DependencyScanner
+
+    scanner = DependencyScanner()
+    all_findings = []
+
+    dep_filenames = [
+        "requirements.txt", "requirements-dev.txt", "requirements-test.txt",
+        "package.json", "pyproject.toml", "Pipfile", "setup.py",
+    ]
+
+    if args.file:
+        files = [Path(args.file)]
+    else:
+        project_dir = Path(args.dir) if args.dir else Path.cwd()
+        files = [project_dir / f for f in dep_filenames if (project_dir / f).exists()]
+
+    if not files:
+        print("No dependency files found.")
+        return 0
+
+    for filepath in files:
+        try:
+            content = filepath.read_text(encoding="utf-8")
+        except (FileNotFoundError, UnicodeDecodeError):
+            continue
+
+        findings = scanner.scan(content, filename=str(filepath))
+        if findings:
+            all_findings.extend([(filepath, f) for f in findings])
+
+    if args.format == "json":
+        print(json.dumps([
+            {
+                "file": str(fp),
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.metadata.get("line"),
+                "package": f.metadata.get("package", ""),
+            }
+            for fp, f in all_findings
+        ], indent=2))
+    else:
+        if not all_findings:
+            print("No supply chain risks found.")
+        else:
+            from sentinel.core import RiskLevel
+            current_file = None
+            for fp, f in all_findings:
+                if fp != current_file:
+                    print(f"\n{fp}:")
+                    current_file = fp
+                line = f.metadata.get("line", "?")
+                print(f"  L{line} [{f.risk.value.upper()}] {f.description}")
+
+            critical_count = sum(1 for _, f in all_findings if f.risk >= RiskLevel.CRITICAL)
+            print(f"\n{len(all_findings)} finding(s), {critical_count} critical")
+
+    has_critical = any(f.risk >= RiskLevel.CRITICAL for _, f in all_findings)
+    return 1 if has_critical else 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -429,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.1")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.2")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -579,6 +643,16 @@ def main(argv: list[str] | None = None) -> int:
         "--dir", "-d", help="Project directory (default: current directory)"
     )
 
+    # dep-scan command
+    dep_parser = subparsers.add_parser(
+        "dep-scan", help="Scan dependency files for supply chain attacks (typosquatting, malicious packages)"
+    )
+    dep_parser.add_argument("--file", "-f", help="Dependency file to scan (requirements.txt, package.json, etc.)")
+    dep_parser.add_argument("--dir", "-d", help="Project directory to auto-detect dependency files")
+    dep_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -609,6 +683,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_claudemd_scan(args)
     elif args.command == "audit":
         return cmd_audit(args)
+    elif args.command == "dep-scan":
+        return cmd_dep_scan(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:

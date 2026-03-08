@@ -2,16 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2] - 2026-03-08
+
+### Added
+- **Dependency Scanner** — `sentinel dep-scan` detects supply chain attacks in dependency files
+  - Typosquatting detection for 20+ popular Python/JS packages
+  - Known malicious package database (50+ packages removed from registries)
+  - Suspicious URL detection (paste sites, raw IPs, untrusted TLDs)
+  - Dangerous install scripts in package.json (curl|bash, wget, etc.)
+  - Version pinning warnings (unpinned, wildcard, loose bounds)
+  - Supports: requirements.txt, package.json, pyproject.toml, Pipfile
+  - Auto-detects dependency files in project directory
+  - JSON output for CI/CD integration
+- 36 new dependency scanner tests
+
+### Changed
+- Test count: 651 → 687
+
 ## [0.8.1] - 2026-03-08
 
 ### Added
 - **Security Audit** — `sentinel audit` scores project security configuration (0-100) across 6 checks: Claude Code hooks, permissions allowlist, security policy, .env files, git pre-commit hooks, MCP config
   - JSON output for CI/CD integration (`--format json`)
   - Returns exit code 1 if critical issues found
+- **CLAUDE.md Scanner** — `sentinel claudemd-scan` detects 11 categories of injection vectors in project instruction files
+  - Scans CLAUDE.md, .cursorrules, .github/copilot-instructions.md
+  - Detects: HTML comment injection, authority impersonation, base URL override, dangerous permissions, disable safety, exfiltration commands, destructive commands, zero-width chars, base64 payloads, homoglyphs, arbitrary code execution
+  - 36 new CLAUDE.md scanner tests
+- **FastAPI Middleware** — `create_sentinel_middleware()` for FastAPI/Starlette apps
+  - 14 new middleware tests
 - 31 new audit tests
 
 ### Changed
-- Test count: 570 → 601
+- Test count: 570 → 651
 
 ## [0.8.0] - 2026-03-08
 

