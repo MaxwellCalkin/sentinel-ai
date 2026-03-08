@@ -55,6 +55,7 @@ from sentinel.audit_log import AuditLog, AuditEvent
 from sentinel.context_manager import ContextWindowManager
 from sentinel.prompt_template import PromptTemplate, PromptLibrary
 from sentinel.guardrail_chain import GuardrailChain, Step as GuardrailStep, OnFail
+from sentinel.response_classifier import ResponseClassifier, ResponseCategory
 
 __version__ = "0.18.0"
 
@@ -150,4 +151,6 @@ __all__ = [
     "GuardrailChain",
     "GuardrailStep",
     "OnFail",
+    "ResponseClassifier",
+    "ResponseCategory",
 ]
