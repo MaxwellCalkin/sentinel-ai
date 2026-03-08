@@ -28,6 +28,7 @@ from sentinel.session_guard import SessionGuard, GuardVerdict
 from sentinel.session_replay import SessionReplay, IncidentReport
 from sentinel.guard_policy import GuardPolicy
 from sentinel.claudemd_enforcer import ClaudeMdEnforcer, EnforcedRule, EnforcementVerdict
+from sentinel.evals import EvalRunner, EvalSuite, EvalCase, EvalResult, EvalReport
 
 __version__ = "0.12.1"
 
@@ -75,4 +76,9 @@ __all__ = [
     "ClaudeMdEnforcer",
     "EnforcedRule",
     "EnforcementVerdict",
+    "EvalRunner",
+    "EvalSuite",
+    "EvalCase",
+    "EvalResult",
+    "EvalReport",
 ]

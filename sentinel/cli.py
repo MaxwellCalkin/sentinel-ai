@@ -954,6 +954,30 @@ def cmd_compliance(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_eval(args: argparse.Namespace) -> int:
+    """Run adversarial safety evaluation suite."""
+    from sentinel.evals import EvalRunner
+
+    runner = EvalRunner()
+
+    if args.suite:
+        suite = EvalRunner.load_suite_from_yaml(args.suite)
+    else:
+        suite = EvalRunner.builtin_suite()
+
+    if args.category:
+        report = runner.run_category(suite, args.category)
+    else:
+        report = runner.run(suite)
+
+    if args.format == "json":
+        print(json.dumps(report.to_dict(), indent=2))
+    else:
+        print(report.summary())
+
+    return 0 if report.accuracy == 1.0 else 1
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -1232,6 +1256,22 @@ def main(argv: list[str] | None = None) -> int:
         help="Output format",
     )
 
+    # eval command
+    eval_parser = subparsers.add_parser(
+        "eval", help="Run adversarial safety evaluation suite"
+    )
+    eval_parser.add_argument(
+        "--suite", "-s", help="Custom suite file (YAML or JSON)"
+    )
+    eval_parser.add_argument(
+        "--format", choices=["text", "json"], default="text",
+        help="Output format",
+    )
+    eval_parser.add_argument(
+        "--category", "-c",
+        help="Filter by category (e.g., injection, obfuscation, pii, harmful, toxicity, benign)",
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -1280,6 +1320,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_enforce(args)
     elif args.command == "compliance":
         return cmd_compliance(args)
+    elif args.command == "eval":
+        return cmd_eval(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
