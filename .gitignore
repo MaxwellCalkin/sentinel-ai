@@ -21,3 +21,9 @@ Thumbs.db
 *.log
 .coverage
 htmlcov/
+.claude/worktrees/
+Awesome-LLM-Safety/
+awesome-fastapi/
+awesome-prompt-injection/
+awesome-security/
+readme_temp.txt
