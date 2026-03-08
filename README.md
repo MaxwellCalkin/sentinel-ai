@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-1603%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-1641%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-561%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -154,6 +154,28 @@ console.log(runner.formatReport(report));
 ```
 
 Test your safety pipeline against injection, obfuscation, PII, harmful content, toxicity, and benign false-positive cases. Also available in the [live demo](https://maxwellcalkin.github.io/sentinel-ai/) under the "Eval Suite" tab.
+
+### Production Features
+
+```python
+from sentinel import SentinelGuard, ScanCache, ScanMetrics
+
+guard = SentinelGuard.default()
+
+# LRU cache — skip re-scanning identical content
+cache = ScanCache(guard, maxsize=1024, ttl=300)
+result = cache.scan("user input")  # cached on repeat
+print(cache.stats)  # {"hits": 42, "misses": 8, "hit_rate": 0.84, ...}
+
+# Metrics — monitor block rate, latency, risk distribution
+metrics = ScanMetrics()
+metrics.record(guard.scan("input"))
+print(metrics.summary())  # {"total_scans": 1, "block_rate": 0.0, "avg_latency_ms": 0.04, ...}
+
+# Batch scanning
+results = guard.scan_batch(["text1", "text2", "text3"])
+results = await guard.scan_batch_async(["text1", "text2", "text3"])  # concurrent
+```
 
 ## Quick Start
 
