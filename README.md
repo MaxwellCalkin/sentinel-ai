@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-536%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-558%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -28,6 +28,48 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    Your Application                       │
+│                                                           │
+│  ┌─────────────┐  ┌──────────────┐  ┌─────────────────┐ │
+│  │ Python SDK  │  │ TypeScript   │  │ REST API        │ │
+│  │ guard.scan()│  │ guard.scan() │  │ POST /scan      │ │
+│  └──────┬──────┘  └──────┬───────┘  └────────┬────────┘ │
+└─────────┼────────────────┼───────────────────┼───────────┘
+          │                │                   │
+          ▼                ▼                   ▼
+┌──────────────────────────────────────────────────────────┐
+│                   Sentinel AI Core                        │
+│                                                           │
+│  ┌────────────┐ ┌─────┐ ┌──────────┐ ┌───────────────┐  │
+│  │ Prompt     │ │ PII │ │ Harmful  │ │ Obfuscation   │  │
+│  │ Injection  │ │     │ │ Content  │ │ Detection     │  │
+│  └────────────┘ └─────┘ └──────────┘ └───────────────┘  │
+│  ┌────────────┐ ┌─────────┐ ┌────────┐ ┌────────────┐  │
+│  │ Tool-Use   │ │Toxicity │ │ Code   │ │ Structured │  │
+│  │ Safety     │ │         │ │Scanner │ │ Output     │  │
+│  └────────────┘ └─────────┘ └────────┘ └────────────┘  │
+└──────────────────────────────────────────────────────────┘
+          │                │                   │
+          ▼                ▼                   ▼
+┌──────────────────────────────────────────────────────────┐
+│                  Deployment Modes                         │
+│                                                           │
+│  sentinel proxy     sentinel mcp-proxy    sentinel hook   │
+│  ┌──────────────┐  ┌──────────────────┐  ┌────────────┐ │
+│  │ LLM API      │  │ MCP Safety       │  │ Claude Code│ │
+│  │ Firewall     │  │ Proxy            │  │ Hook       │ │
+│  │              │  │                  │  │            │ │
+│  │ Anthropic API│  │ Any MCP Server   │  │ PreToolUse │ │
+│  │ OpenAI API   │  │ (filesystem,     │  │ scanning   │ │
+│  │ Any LLM API  │  │  postgres, etc.) │  │            │ │
+│  └──────────────┘  └──────────────────┘  └────────────┘ │
+└──────────────────────────────────────────────────────────┘
+```
 
 ## Installation
 
@@ -593,6 +635,36 @@ app = create_authenticated_app()
   with:
     code-scan: src/generated_output.py
     block-on: high
+
+# Upload results to GitHub Code Scanning (Security tab)
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    code-scan: src/generated_output.py
+    upload-sarif: "true"
+```
+
+### SARIF Output (GitHub Code Scanning)
+
+Generate [SARIF v2.1.0](https://sarifweb.azurewebsites.net/) output for integration with GitHub Code Scanning, Azure DevOps, and other static analysis tools:
+
+```bash
+# CLI
+sentinel scan "text to scan" --format sarif > results.sarif
+sentinel code-scan --file app.py --format sarif > results.sarif
+
+# Upload to GitHub Code Scanning
+gh api repos/{owner}/{repo}/code-scanning/sarifs \
+  -f "sarif=$(gzip -c results.sarif | base64)"
+```
+
+```python
+# Python API
+from sentinel.sarif import scan_result_to_sarif, sarif_to_json
+
+guard = SentinelGuard.default()
+result = guard.scan("some text")
+sarif = scan_result_to_sarif(result, artifact_uri="input.txt")
+print(sarif_to_json(sarif))
 ```
 
 ## Benchmark
@@ -633,6 +705,7 @@ print(results.summary())
 | Multi-turn tracking | **Yes** | Yes | No | No |
 | Streaming protection | Yes | No | No | No |
 | Multilingual injection (12 langs) | **Yes** | No | No | No |
+| SARIF output (GitHub Code Scanning) | **Yes** | No | No | No |
 | Claude Agent SDK integration | **Yes** | No | No | No |
 
 ## Architecture
@@ -651,6 +724,7 @@ sentinel/
   telemetry.py         # OpenTelemetry + metrics
   webhooks.py          # Slack, PagerDuty, custom HTTP alerts
   auth.py              # API key store + rate limiter
+  sarif.py             # SARIF v2.1.0 output for GitHub Code Scanning
   rsp_report.py        # RSP v3.0-aligned risk report generator
   conversation.py      # Multi-turn conversation safety tracking
   adversarial.py       # Adversarial robustness testing / red-teaming

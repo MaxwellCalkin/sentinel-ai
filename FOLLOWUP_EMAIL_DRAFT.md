@@ -1,11 +1,11 @@
 # Follow-up Email Draft (send Wed March 11 if no reply)
 
 ## To: chrismacleod@anthropic.com
-## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 481 tests)
+## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 558 tests)
 
 Hi Christopher,
 
-Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.7.0 with some features I think are particularly relevant to Anthropic:
+Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.8.0 with some features I think are particularly relevant to Anthropic:
 
 **MCP Safety Proxy** — `sentinel mcp-proxy` wraps any MCP server with safety scanning. Intercepts all tool calls, blocks dangerous operations, auto-redacts PII in responses. This addresses the hook bypass issues in Claude Code (#21460 — hooks not enforced on subagent tool calls) by operating at the transport layer.
 
@@ -13,9 +13,13 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **Claude Code attack detection** — Detects the exact vectors from CVE-2025-59536 and CVE-2026-21852 (poisoned repos via HTML comments, authority impersonation, API base URL override for credential exfiltration).
 
-**Obfuscation Detection** — Catches encoded attack payloads that bypass keyword filters: base64-encoded prompt overrides, hex-encoded shell commands, ROT13-obfuscated instructions, leetspeak variants. The deterministic first-pass filter that frees the model to focus on harder safety questions.
+**Obfuscation Detection** — Catches encoded attack payloads that bypass keyword filters: base64-encoded prompt overrides, hex-encoded shell commands, ROT13-obfuscated instructions, leetspeak variants.
 
-Current state: 10 scanners, 481 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs — Python and TypeScript (standalone scanning, zero deps). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged). 16+ substantive comments on Claude Code security issues.
+**Streaming Safety Scanning** — `guarded_stream()` wraps the Anthropic streaming API with real-time output scanning. Detects and blocks dangerous content mid-stream, before it reaches the user.
+
+**LLM API Firewall** — `sentinel proxy` is a transparent reverse proxy that sits between any app and any LLM API. Scans all requests/responses, blocks dangerous content, auto-redacts PII, enforces model allowlists. Deploy as infrastructure — no code changes needed.
+
+Current state: 10 scanners, 558 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs — Python and TypeScript (standalone scanning, zero deps). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged). 18+ substantive comments on Claude Code security issues.
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -26,26 +30,28 @@ https://github.com/MaxwellCalkin/sentinel-ai
 ---
 
 ## To: jblack@anthropic.com, vgupta@anthropic.com
-## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem (v0.7.0)
+## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem (v0.8.0)
 
 Hi James and Vishal,
 
 Following up from Saturday. Sentinel AI has evolved significantly — here's a quick snapshot:
 
-**v0.7.0 highlights:**
+**v0.8.0 highlights:**
 - Obfuscation detection — catches base64/hex/ROT13/leetspeak encoded attacks
 - MCP Safety Proxy — transparent safety layer for any MCP server
 - Code vulnerability scanner — OWASP detection in LLM-generated code
 - Claude Code attack vector detection (CVE-2025-59536, CVE-2026-21852)
-- 10 scanners, 481 tests, 546-case benchmark at 100% accuracy
+- 10 scanners, 558 tests, 546-case benchmark at 100% accuracy
+- LLM API Firewall — transparent proxy for any LLM API, no code changes needed
 - Dual SDKs: Python + TypeScript (standalone, zero runtime deps)
+- Streaming safety scanning — real-time output scanning for Anthropic streaming API
 - GitHub Action for CI/CD security scanning
 
 **Anthropic ecosystem integration:**
 - PR #2 on claude-agent-sdk — merged
 - PRs on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
-- 16+ substantive comments on Claude Code security issues (#32029 AI self-approval, #32016 subagent prompt scanning, #80 silent scan failures, etc.)
+- 18+ substantive comments on Claude Code security issues (#32029 AI self-approval, #32016 subagent prompt scanning, #80 silent scan failures, etc.)
 - Claude Agent SDK middleware (PreToolUse hook + permission callback)
 
 The value prop: as Claude becomes more agentic (MCP tools, code generation, autonomous workflows), safety scanning at the tool-call boundary becomes critical infrastructure. Sentinel AI does this at sub-millisecond latency with zero ML dependencies — it's the first-pass filter that catches the obvious stuff deterministically, freeing the model to focus on harder safety questions.

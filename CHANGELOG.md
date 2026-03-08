@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-03-08
+
+### Added
+- **SARIF v2.1.0 Output** — Generate SARIF format for GitHub Code Scanning, Azure DevOps, and other static analysis tools
+  - `sentinel scan --format sarif` and `sentinel code-scan --format sarif` CLI support
+  - `scan_result_to_sarif()` and `findings_to_sarif()` Python API
+  - Maps RiskLevel to SARIF severity levels, Finding spans to SARIF regions
+  - Includes rule deduplication and metadata propagation
+- GitHub Action `upload-sarif` option for automatic GitHub Code Scanning integration
+- 22 new SARIF tests
+
+### Changed
+- Test count: 536 → 558
+
 ## [0.7.1] - 2026-03-08
 
 ### Added

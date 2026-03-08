@@ -18,7 +18,11 @@ from pathlib import Path
 from sentinel.core import SentinelGuard, ScanResult
 
 
-def _format_result(result: ScanResult, fmt: str = "text") -> str:
+def _format_result(result: ScanResult, fmt: str = "text", artifact_uri: str = "input") -> str:
+    if fmt == "sarif":
+        from sentinel.sarif import scan_result_to_sarif, sarif_to_json
+        return sarif_to_json(scan_result_to_sarif(result, artifact_uri=artifact_uri))
+
     if fmt == "json":
         return json.dumps(
             {
@@ -200,7 +204,10 @@ def cmd_code_scan(args: argparse.Namespace) -> int:
 
     findings = scanner.scan(code, filename=filename)
 
-    if args.format == "json":
+    if args.format == "sarif":
+        from sentinel.sarif import findings_to_sarif, sarif_to_json
+        print(sarif_to_json(findings_to_sarif(findings, artifact_uri=filename)))
+    elif args.format == "json":
         print(json.dumps([
             {
                 "category": f.category,
@@ -293,7 +300,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.6.0")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.0")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -302,7 +309,8 @@ def main(argv: list[str] | None = None) -> int:
     scan_parser.add_argument("--file", "-f", help="Read text from file")
     scan_parser.add_argument("--stdin", action="store_true", help="Read from stdin")
     scan_parser.add_argument(
-        "--format", choices=["text", "json"], default="text", help="Output format"
+        "--format", choices=["text", "json", "sarif"], default="text",
+        help="Output format (sarif for GitHub Code Scanning)",
     )
 
     # red-team command
@@ -347,7 +355,8 @@ def main(argv: list[str] | None = None) -> int:
     cs_parser.add_argument("--stdin", action="store_true", help="Read from stdin")
     cs_parser.add_argument("--filename", help="Filename hint for language detection")
     cs_parser.add_argument(
-        "--format", choices=["text", "json"], default="text", help="Output format"
+        "--format", choices=["text", "json", "sarif"], default="text",
+        help="Output format (sarif for GitHub Code Scanning)",
     )
 
     # hook command (for Claude Code hooks integration)

@@ -16,9 +16,13 @@ inputs:
     description: "Path to source file to scan for OWASP vulnerabilities"
     required: false
   format:
-    description: "Output format: text or json"
+    description: "Output format: text, json, or sarif"
     required: false
     default: "json"
+  upload-sarif:
+    description: "Upload SARIF results to GitHub Code Scanning (requires security-events: write)"
+    required: false
+    default: "false"
   block-on:
     description: "Fail if risk >= this level (none, low, medium, high, critical)"
     required: false
@@ -79,6 +83,26 @@ runs:
           echo "Error: provide 'text', 'file', or 'code-scan' input"
           exit 1
         fi
+
+    - name: Generate SARIF
+      if: inputs.upload-sarif == 'true'
+      id: sarif
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.code-scan }}" ]; then
+          sentinel code-scan --file "${{ inputs.code-scan }}" --format sarif > sentinel-results.sarif
+        elif [ -n "${{ inputs.file }}" ]; then
+          sentinel scan --file "${{ inputs.file }}" --format sarif > sentinel-results.sarif
+        elif [ -n "${{ inputs.text }}" ]; then
+          sentinel scan "${{ inputs.text }}" --format sarif > sentinel-results.sarif
+        fi
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: inputs.upload-sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: sentinel-results.sarif
+        category: sentinel-ai
 
     - name: Check threshold
       shell: bash
