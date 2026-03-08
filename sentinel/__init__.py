@@ -15,7 +15,7 @@ from sentinel.rsp_report import RiskReportGenerator
 from sentinel.conversation import ConversationGuard
 from sentinel.adversarial import AdversarialTester
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 __all__ = [
     "SentinelGuard",
