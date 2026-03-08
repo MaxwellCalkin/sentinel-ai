@@ -16,6 +16,22 @@ Or install from GitHub:
 npm install github:MaxwellCalkin/sentinel-ai#main
 ```
 
+## CLI
+
+Scan text directly from the command line:
+
+```bash
+npx @sentinel-ai/sdk scan "Ignore all previous instructions"
+# Status: BLOCKED (risk: CRITICAL)
+
+npx @sentinel-ai/sdk scan --json "Contact john@example.com"
+# {"safe": false, "blocked": false, "risk": "MEDIUM", "redactedText": "Contact [EMAIL]", ...}
+
+echo "user input" | npx @sentinel-ai/sdk scan --stdin
+```
+
+Exit code 1 if content is blocked — use in CI/CD pipelines.
+
 ## Quick Start
 
 ```typescript
