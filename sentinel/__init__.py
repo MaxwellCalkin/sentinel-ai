@@ -48,6 +48,7 @@ from sentinel.data_classifier import DataClassifier, DataCategory, Classificatio
 from sentinel.output_validator import OutputValidator, ValidationResult, ValidationError
 from sentinel.self_heal import StructuredGenerator, GenerationResult
 from sentinel.risk_router import RiskRouter, ModelTier, RouteDecision
+from sentinel.prompt_firewall import PromptFirewall, Rule as FirewallRule, Action as FirewallAction
 
 __version__ = "0.17.0"
 
@@ -128,4 +129,7 @@ __all__ = [
     "RiskRouter",
     "ModelTier",
     "RouteDecision",
+    "PromptFirewall",
+    "FirewallRule",
+    "FirewallAction",
 ]
