@@ -51,6 +51,7 @@ from sentinel.risk_router import RiskRouter, ModelTier, RouteDecision
 from sentinel.prompt_firewall import PromptFirewall, Rule as FirewallRule, Action as FirewallAction
 from sentinel.similarity_guard import SimilarityGuard, SimilarityResult
 from sentinel.input_sanitizer import InputSanitizer, SanitizeResult
+from sentinel.audit_log import AuditLog, AuditEvent
 
 __version__ = "0.17.0"
 
@@ -138,4 +139,6 @@ __all__ = [
     "SimilarityResult",
     "InputSanitizer",
     "SanitizeResult",
+    "AuditLog",
+    "AuditEvent",
 ]
