@@ -1,6 +1,6 @@
 {
   "name": "@sentinel-ai/sdk",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Sentinel AI - Real-time safety guardrails for LLM applications. Standalone scanning for Node.js, Deno, Bun, and browsers.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

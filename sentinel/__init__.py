@@ -28,7 +28,7 @@ from sentinel.session_guard import SessionGuard, GuardVerdict
 from sentinel.session_replay import SessionReplay, IncidentReport
 from sentinel.guard_policy import GuardPolicy
 
-__version__ = "0.12.0"
+__version__ = "0.12.1"
 
 __all__ = [
     "SentinelGuard",
