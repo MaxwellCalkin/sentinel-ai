@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2026-03-08
+
+### Added
+- **Streaming Safety Scanning** — `guarded_stream()` and `guarded_stream_async()` wrap the Anthropic streaming API with real-time output scanning via `StreamingGuard`. Blocks dangerous content mid-stream.
+- **Anthropic SDK Wrapper Test Suite** — 30 tests covering `guarded_message`, `guarded_stream`, tool use scanning, PII redaction, and async variants
+- Shared `_scan_inputs()` helper to reduce code duplication in wrapper
+
+### Changed
+- Test count: 481 → 511
+
 ## [0.7.0] - 2026-03-08
 
 ### Added
