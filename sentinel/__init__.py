@@ -53,6 +53,7 @@ from sentinel.similarity_guard import SimilarityGuard, SimilarityResult
 from sentinel.input_sanitizer import InputSanitizer, SanitizeResult
 from sentinel.audit_log import AuditLog, AuditEvent
 from sentinel.context_manager import ContextWindowManager
+from sentinel.prompt_template import PromptTemplate, PromptLibrary
 
 __version__ = "0.18.0"
 
@@ -143,4 +144,6 @@ __all__ = [
     "AuditLog",
     "AuditEvent",
     "ContextWindowManager",
+    "PromptTemplate",
+    "PromptLibrary",
 ]
