@@ -35,7 +35,7 @@ class TestPolicy:
     def test_build_guard_default(self):
         policy = Policy()
         guard = policy.build_guard()
-        assert len(guard._scanners) == 4  # all 4 default scanners
+        assert len(guard._scanners) == 10  # all 10 default scanners
 
     def test_build_guard_with_disabled_scanner(self):
         policy = Policy.from_dict({
@@ -68,3 +68,55 @@ class TestPolicy:
             "allow_list": ["known safe phrase"],
         })
         assert "known safe phrase" in policy.allow_list
+
+    def test_build_guard_includes_all_scanners(self):
+        policy = Policy()
+        guard = policy.build_guard()
+        scanner_names = {s.name for s in guard._scanners}
+        expected = {
+            "prompt_injection", "pii", "harmful_content", "hallucination",
+            "toxicity", "tool_use", "obfuscation", "structured_output",
+            "code_vulnerability", "secrets",
+        }
+        assert scanner_names == expected
+
+    def test_build_guard_disable_secrets(self):
+        policy = Policy.from_dict({
+            "scanners": {"secrets": {"enabled": False}},
+        })
+        guard = policy.build_guard()
+        scanner_names = {s.name for s in guard._scanners}
+        assert "secrets" not in scanner_names
+        assert "prompt_injection" in scanner_names
+
+    def test_validate_valid_policy(self):
+        policy = Policy.from_dict({
+            "scanners": {"prompt_injection": {"enabled": True}},
+        })
+        warnings = policy.validate()
+        assert len(warnings) == 0
+
+    def test_validate_unknown_scanner(self):
+        policy = Policy.from_dict({
+            "scanners": {"nonexistent_scanner": {"enabled": True}},
+        })
+        warnings = policy.validate()
+        assert any("Unknown scanner" in w for w in warnings)
+
+    def test_validate_no_scanners_enabled(self):
+        policy = Policy.from_dict({
+            "scanners": {
+                "prompt_injection": {"enabled": False},
+                "pii": {"enabled": False},
+                "harmful_content": {"enabled": False},
+                "hallucination": {"enabled": False},
+                "toxicity": {"enabled": False},
+                "tool_use": {"enabled": False},
+                "obfuscation": {"enabled": False},
+                "structured_output": {"enabled": False},
+                "code_vulnerability": {"enabled": False},
+                "secrets": {"enabled": False},
+            },
+        })
+        warnings = policy.validate()
+        assert any("No scanners enabled" in w for w in warnings)

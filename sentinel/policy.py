@@ -42,6 +42,30 @@ from typing import Any
 from sentinel.core import Finding, RiskLevel, SentinelGuard
 
 
+class _CodeScannerAdapter:
+    """Wraps CodeScanner to conform to the standard scanner interface."""
+    name = "code_vulnerability"
+
+    def __init__(self) -> None:
+        from sentinel.scanners.code_scanner import CodeScanner as _CS
+        self._inner = _CS()
+
+    def scan(self, text: str, context: dict | None = None) -> list[Finding]:
+        return self._inner.scan(text)
+
+
+class _SecretsScannerAdapter:
+    """Wraps SecretsScanner to conform to the standard scanner interface."""
+    name = "secrets"
+
+    def __init__(self) -> None:
+        from sentinel.scanners.secrets_scanner import SecretsScanner as _SS
+        self._inner = _SS()
+
+    def scan(self, text: str, context: dict | None = None) -> list[Finding]:
+        return self._inner.scan(text)
+
+
 @dataclass
 class ScannerPolicy:
     enabled: bool = True
@@ -109,12 +133,21 @@ class Policy:
         from sentinel.scanners.harmful_content import HarmfulContentScanner
         from sentinel.scanners.hallucination import HallucinationScanner
         from sentinel.scanners.blocked_terms import BlockedTermsScanner
-
+        from sentinel.scanners.toxicity import ToxicityScanner
+        from sentinel.scanners.tool_use import ToolUseScanner
+        from sentinel.scanners.obfuscation import ObfuscationScanner
+        from sentinel.scanners.structured_output import StructuredOutputScanner
         scanner_map = {
             "prompt_injection": PromptInjectionScanner,
             "pii": PIIScanner,
             "harmful_content": HarmfulContentScanner,
             "hallucination": HallucinationScanner,
+            "toxicity": ToxicityScanner,
+            "tool_use": ToolUseScanner,
+            "obfuscation": ObfuscationScanner,
+            "structured_output": StructuredOutputScanner,
+            "code_vulnerability": _CodeScannerAdapter,
+            "secrets": _SecretsScannerAdapter,
         }
 
         scanners = []
@@ -136,3 +169,23 @@ class Policy:
             guard._allow_list = self.allow_list
 
         return guard
+
+    def validate(self) -> list[str]:
+        """Validate the policy configuration and return any warnings."""
+        warnings = []
+        valid_scanners = {
+            "prompt_injection", "pii", "harmful_content", "hallucination",
+            "toxicity", "tool_use", "obfuscation", "structured_output",
+            "code_vulnerability", "secrets",
+        }
+        for name in self.scanner_policies:
+            if name not in valid_scanners:
+                warnings.append(f"Unknown scanner '{name}' in policy")
+
+        if not any(
+            self.scanner_policies.get(s, ScannerPolicy()).enabled
+            for s in valid_scanners
+        ):
+            warnings.append("No scanners enabled — policy will not scan anything")
+
+        return warnings
