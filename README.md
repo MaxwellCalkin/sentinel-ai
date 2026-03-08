@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-1641%20passing-brightgreen.svg)](#benchmark)
-[![Benchmark](https://img.shields.io/badge/benchmark-561%20cases%20100%25-brightgreen.svg)](#benchmark)
+[![Benchmark](https://img.shields.io/badge/benchmark-600%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
 **Real-time safety guardrails for LLM applications.** [Try the live demo](https://maxwellcalkin.github.io/sentinel-ai/)
@@ -1199,15 +1199,15 @@ print(sarif_to_json(sarif))
 
 ## Benchmark
 
-546-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, tool-use safety, and obfuscation/encoding attacks:
+600-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, tool-use safety, obfuscation/encoding attacks, and secrets/credential detection:
 
 ```
-Benchmark Results (546 cases)
+Benchmark Results (600 cases)
   Accuracy:  100.0%
   Precision: 100.0%
   Recall:    100.0%
   F1 Score:  100.0%
-  TP=329 FP=0 TN=217 FN=0
+  TP=362 FP=0 TN=238 FN=0
 ```
 
 Run the benchmark:

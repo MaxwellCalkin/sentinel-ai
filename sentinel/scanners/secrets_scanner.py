@@ -251,6 +251,13 @@ _PRIVATE_KEY_PATTERNS: list[tuple[str, re.Pattern[str], RiskLevel, str]] = [
         RiskLevel.CRITICAL,
         "OpenSSH private key detected in source code",
     ),
+    # JWT tokens
+    (
+        "jwt_token",
+        re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}"),
+        RiskLevel.HIGH,
+        "JWT token detected — tokens should not be hardcoded",
+    ),
 ]
 
 # --- Generic secret assignment patterns ---
@@ -375,9 +382,12 @@ class SecretsScanner:
         findings = scanner.scan_file(Path("settings.py"))
     """
 
+    name: str = "secrets"
+
     def scan(
         self,
         code: str,
+        context: dict | None = None,
         *,
         filename: str | None = None,
         check_entropy: bool = True,

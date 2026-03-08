@@ -11,7 +11,7 @@ from sentinel.scanners.hallucination import HallucinationScanner
 class TestSentinelGuard:
     def test_default_guard_creation(self):
         guard = SentinelGuard.default()
-        assert len(guard._scanners) == 7
+        assert len(guard._scanners) == 8
 
     def test_safe_text_passes(self):
         guard = SentinelGuard.default()
