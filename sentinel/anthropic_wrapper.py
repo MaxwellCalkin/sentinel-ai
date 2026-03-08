@@ -30,6 +30,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from sentinel.core import Finding, RiskLevel, ScanResult, SentinelGuard
+from sentinel.prompt_leak import PromptLeakDetector
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +159,36 @@ class SafeMessages:
                 f"findings={len(output_scan.findings)})",
                 scan_result=output_scan,
             )
+
+        # Check for system prompt leaking in output
+        if system and self._config.get("detect_prompt_leak", True):
+            leak_detector = PromptLeakDetector(system)
+            leak_result = leak_detector.check(output_text)
+            if leak_result.leaked:
+                output_scan.findings.append(
+                    Finding(
+                        scanner="prompt_leak",
+                        category="prompt_leak",
+                        description=(
+                            f"System prompt leak detected: "
+                            f"{leak_result.overlap_ratio:.0%} overlap, "
+                            f"{len(leak_result.matched_fragments)} fragment(s)"
+                        ),
+                        risk=RiskLevel.CRITICAL,
+                        metadata={
+                            "overlap_ratio": leak_result.overlap_ratio,
+                            "risk_score": leak_result.risk_score,
+                            "fragments": leak_result.matched_fragments[:3],
+                        },
+                    )
+                )
+                output_scan.risk = RiskLevel.CRITICAL
+                output_scan.blocked = True
+                if self._config.get("block_on_output", True):
+                    raise OutputBlockedError(
+                        "System prompt leak detected in model output",
+                        scan_result=output_scan,
+                    )
 
         return SafeResponse(
             response=response,
@@ -351,6 +382,7 @@ class SafeAnthropic:
         guard: SentinelGuard | None = None,
         block_on_input: bool = True,
         block_on_output: bool = True,
+        detect_prompt_leak: bool = True,
         stream_scan_interval: int = 200,
         **kwargs: Any,
     ):
@@ -367,6 +399,7 @@ class SafeAnthropic:
         self._config = {
             "block_on_input": block_on_input,
             "block_on_output": block_on_output,
+            "detect_prompt_leak": detect_prompt_leak,
             "stream_scan_interval": stream_scan_interval,
         }
 
