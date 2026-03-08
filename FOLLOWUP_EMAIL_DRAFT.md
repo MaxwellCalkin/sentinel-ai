@@ -5,7 +5,7 @@
 
 Hi Christopher,
 
-Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.6.0 with some features I think are particularly relevant to Anthropic:
+Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.7.0 with some features I think are particularly relevant to Anthropic:
 
 **MCP Safety Proxy** — `sentinel mcp-proxy` wraps any MCP server with safety scanning. Intercepts all tool calls, blocks dangerous operations, auto-redacts PII in responses. This addresses the hook bypass issues in Claude Code (#21460 — hooks not enforced on subagent tool calls) by operating at the transport layer.
 
@@ -13,7 +13,9 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **Claude Code attack detection** — Detects the exact vectors from CVE-2025-59536 and CVE-2026-21852 (poisoned repos via HTML comments, authority impersonation, API base URL override for credential exfiltration).
 
-Current state: 9 scanners, 457 tests, 530-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged).
+**Obfuscation Detection** — Catches encoded attack payloads that bypass keyword filters: base64-encoded prompt overrides, hex-encoded shell commands, ROT13-obfuscated instructions, leetspeak variants. The deterministic first-pass filter that frees the model to focus on harder safety questions.
+
+Current state: 10 scanners, 481 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged).
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -30,11 +32,12 @@ Hi James and Vishal,
 
 Following up from Saturday. Sentinel AI has evolved significantly — here's a quick snapshot:
 
-**v0.6.0 highlights:**
+**v0.7.0 highlights:**
+- Obfuscation detection — catches base64/hex/ROT13/leetspeak encoded attacks
 - MCP Safety Proxy — transparent safety layer for any MCP server
 - Code vulnerability scanner — OWASP detection in LLM-generated code
 - Claude Code attack vector detection (CVE-2025-59536, CVE-2026-21852)
-- 9 scanners, 457 tests, 530-case benchmark at 100% accuracy
+- 10 scanners, 481 tests, 546-case benchmark at 100% accuracy
 
 **Anthropic ecosystem integration:**
 - PR #2 on claude-agent-sdk — merged
