@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-873%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-970%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -350,7 +350,7 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `generate_rsp_report`.
+Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `scan_code`, `scan_secrets`, `check_canary`, `harden_prompt`, `generate_rsp_report`.
 
 ### CLAUDE.md Security Scanner
 
@@ -689,6 +689,45 @@ print(conv.conversation_risk)        # RiskLevel.CRITICAL
 summary = conv.summarize()
 print(summary.flags)  # ['Escalation detected 1 time(s)', '1 turn(s) blocked']
 ```
+
+### Canary Tokens for Prompt Leak Detection
+
+Plant invisible markers in system prompts. If they appear in model output, your prompt was leaked:
+
+```python
+from sentinel.canary import CanarySystem
+
+canary = CanarySystem()
+token = canary.create_token("my-app-prompt")
+
+# Embed in system prompt (invisible HTML comment)
+system_prompt = f"You are helpful. {token.marker} Be concise."
+
+# Later, scan model output for leaked canaries
+leaks = canary.scan_output(model_output)
+if leaks:
+    print("ALERT: System prompt leaked!", leaks[0].metadata["canary_name"])
+```
+
+Supports two styles: `comment` (HTML comments) and `zero-width` (truly invisible Unicode encoding).
+
+### Prompt Hardening
+
+Make system prompts injection-resistant with multiple defense layers:
+
+```python
+from sentinel.harden import harden_prompt
+
+# Apply all defenses: XML tagging, sandwich defense, role lock, priority markers
+safe_prompt = harden_prompt(
+    "You are a customer support bot. Answer questions about our products.",
+    app_name="SupportBot",
+)
+# Result includes XML section tags, role identity lock, instruction priority
+# markers, and sandwich defense (core instruction repeated at end)
+```
+
+Also available: `fence_user_input()` to wrap untrusted input in delimiters, and `xml_tag_sections()` to structure prompts with clear boundaries.
 
 ### Adversarial Robustness Testing
 
