@@ -20,6 +20,7 @@ from sentinel.scanners.secrets_scanner import SecretsScanner
 from sentinel.harden import harden_prompt, fence_user_input, sandwich_wrap, xml_tag_sections, HardeningConfig
 from sentinel.rate_guard import RateGuard
 from sentinel.compliance import ComplianceMapper, Framework, ComplianceStatus
+from sentinel.agent_monitor import AgentMonitor
 
 __version__ = "0.9.0"
 
@@ -52,4 +53,5 @@ __all__ = [
     "ComplianceMapper",
     "Framework",
     "ComplianceStatus",
+    "AgentMonitor",
 ]
