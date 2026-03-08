@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Real-time safety guardrails for LLM applications — prompt injection, PII, harmful content, toxicity, and tool-use scanning",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "plugins": [
     {
       "name": "sentinel-ai",
       "source": ".",
       "description": "Real-time safety guardrails for LLM applications. Scans for prompt injection, PII leaks, harmful content, toxicity, hallucinations, and dangerous tool calls with sub-millisecond latency.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Maxwell Calkin",
         "url": "https://github.com/MaxwellCalkin"
