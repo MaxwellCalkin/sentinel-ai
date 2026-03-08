@@ -269,6 +269,25 @@ def handle_tools_list(params: dict) -> dict:
                     "required": ["texts"],
                 },
             },
+            {
+                "name": "check_canary",
+                "description": (
+                    "Scan text for leaked canary tokens. Detects if system "
+                    "prompts, context documents, or other privileged content "
+                    "has been leaked by the model. Checks for SENTINEL_CANARY "
+                    "markers in both HTML comment and zero-width encoded forms."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "Model output text to scan for leaked canaries",
+                        },
+                    },
+                    "required": ["text"],
+                },
+            },
         ],
     }
 
@@ -293,6 +312,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_scan_code(arguments)
     elif tool_name == "scan_secrets":
         return _tool_scan_secrets(arguments)
+    elif tool_name == "check_canary":
+        return _tool_check_canary(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
     else:
@@ -457,6 +478,32 @@ def _tool_get_risk_report(args: dict) -> dict:
 
     return {
         "content": [{"type": "text", "text": "\n".join(report_lines)}],
+    }
+
+
+def _tool_check_canary(args: dict) -> dict:
+    from sentinel.canary import CanarySystem
+
+    text = args.get("text", "")
+    system = CanarySystem()
+    findings = system.scan_for_any_canary(text)
+
+    output = {
+        "leaked": len(findings) > 0,
+        "findings_count": len(findings),
+        "findings": [
+            {
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "token_id": f.metadata.get("token_id"),
+            }
+            for f in findings
+        ],
+    }
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
     }
 
 
