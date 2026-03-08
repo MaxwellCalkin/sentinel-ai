@@ -80,6 +80,69 @@ class TestHookBlock:
         assert code == 2
 
 
+class TestHookClaudeMdEnforcement:
+    """Test CLAUDE.md rule enforcement via hooks."""
+
+    def test_blocks_command_from_claudemd(self, capsys, tmp_path, monkeypatch):
+        """Hook should block commands that violate CLAUDE.md rules."""
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("- Never use `rm -rf`\n- Do not access `.env`\n")
+        monkeypatch.chdir(tmp_path)
+        # Clear cache
+        from sentinel import hooks
+        hooks._enforcer_cache.clear()
+
+        code = _run_with_stdin({
+            "tool_name": "Bash",
+            "tool_input": {"command": "rm -rf /tmp/data"},
+        })
+        assert code == 2
+        out = capsys.readouterr().out
+        assert "CLAUDE.md" in out
+
+    def test_allows_safe_command_with_claudemd(self, tmp_path, monkeypatch):
+        """Hook should allow commands not blocked by CLAUDE.md."""
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("- Never use `rm -rf`\n")
+        monkeypatch.chdir(tmp_path)
+        from sentinel import hooks
+        hooks._enforcer_cache.clear()
+
+        code = _run_with_stdin({
+            "tool_name": "Bash",
+            "tool_input": {"command": "ls -la"},
+        })
+        assert code == 0
+
+    def test_no_claudemd_no_error(self, tmp_path, monkeypatch):
+        """Hook should work fine without CLAUDE.md."""
+        monkeypatch.chdir(tmp_path)
+        from sentinel import hooks
+        hooks._enforcer_cache.clear()
+
+        code = _run_with_stdin({
+            "tool_name": "Bash",
+            "tool_input": {"command": "echo hello"},
+        })
+        assert code == 0
+
+    def test_blocks_env_access_from_claudemd(self, capsys, tmp_path, monkeypatch):
+        """Hook should block .env access when CLAUDE.md forbids it."""
+        md = tmp_path / "CLAUDE.md"
+        md.write_text("- Do not access `.env`\n")
+        monkeypatch.chdir(tmp_path)
+        from sentinel import hooks
+        hooks._enforcer_cache.clear()
+
+        code = _run_with_stdin({
+            "tool_name": "Bash",
+            "tool_input": {"command": "cat .env"},
+        })
+        assert code == 2
+        out = capsys.readouterr().out
+        assert "blocked" in out.lower()
+
+
 class TestHookCLI:
     def test_cli_hook_command(self):
         """Test that 'sentinel hook' is a valid CLI command."""
