@@ -28,8 +28,6 @@ How it works:
     6. Blocks dangerous requests/responses with 422 status
 """
 
-from __future__ import annotations
-
 import json
 import time
 from typing import Any, Optional
