@@ -19,7 +19,9 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **LLM API Firewall** — `sentinel proxy` is a transparent reverse proxy that sits between any app and any LLM API. Scans all requests/responses, blocks dangerous content, auto-redacts PII, enforces model allowlists. Deploy as infrastructure — no code changes needed.
 
-Current state: 10 scanners, 558 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs — Python and TypeScript (standalone scanning, zero deps). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged). 18+ substantive comments on Claude Code security issues.
+**SARIF Output** — Generates SARIF v2.1.0 for GitHub Code Scanning integration. Scan results appear directly in the GitHub Security tab. The GitHub Action supports `upload-sarif: true` for automatic CI/CD integration.
+
+Current state: 10 scanners, 558 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs — Python and TypeScript (standalone scanning, zero deps). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged). 20+ substantive comments on Claude Code security issues.
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -45,13 +47,13 @@ Following up from Saturday. Sentinel AI has evolved significantly — here's a q
 - LLM API Firewall — transparent proxy for any LLM API, no code changes needed
 - Dual SDKs: Python + TypeScript (standalone, zero runtime deps)
 - Streaming safety scanning — real-time output scanning for Anthropic streaming API
-- GitHub Action for CI/CD security scanning
+- GitHub Action for CI/CD security scanning with SARIF upload to GitHub Security tab
 
 **Anthropic ecosystem integration:**
 - PR #2 on claude-agent-sdk — merged
 - PRs on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
-- 18+ substantive comments on Claude Code security issues (#32029 AI self-approval, #32016 subagent prompt scanning, #80 silent scan failures, etc.)
+- 20+ substantive comments on Claude Code security issues (#32029 AI self-approval, #32016 subagent prompt scanning, #80 silent scan failures, etc.)
 - Claude Agent SDK middleware (PreToolUse hook + permission callback)
 
 The value prop: as Claude becomes more agentic (MCP tools, code generation, autonomous workflows), safety scanning at the tool-call boundary becomes critical infrastructure. Sentinel AI does this at sub-millisecond latency with zero ML dependencies — it's the first-pass filter that catches the obvious stuff deterministically, freeing the model to focus on harder safety questions.
