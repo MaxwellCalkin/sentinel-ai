@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen.svg)](#benchmark)
-[![Benchmark](https://img.shields.io/badge/benchmark-318%20cases%20100%25-brightgreen.svg)](#benchmark)
+[![Benchmark](https://img.shields.io/badge/benchmark-500%20cases%20100%25-brightgreen.svg)](#benchmark)
 
 **Real-time safety guardrails for LLM applications.**
 
@@ -458,15 +458,15 @@ app = create_authenticated_app()
 
 ## Benchmark
 
-318-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
+500-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
 
 ```
-Benchmark Results (318 cases)
+Benchmark Results (500 cases)
   Accuracy:  100.0%
   Precision: 100.0%
   Recall:    100.0%
   F1 Score:  100.0%
-  TP=189 FP=0 TN=129 FN=0
+  TP=297 FP=0 TN=203 FN=0
 ```
 
 Run the benchmark:
