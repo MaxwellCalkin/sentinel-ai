@@ -1,0 +1,87 @@
+{
+  "manifest_version": "0.3",
+  "name": "sentinel-ai",
+  "display_name": "Sentinel AI Safety Guardrails",
+  "version": "0.16.0",
+  "description": "Real-time safety scanning for LLM applications. Detects prompt injection, PII leaks, harmful content, toxicity, obfuscation, hardcoded secrets, and dangerous tool calls with sub-millisecond latency and 100% accuracy on a 600-case benchmark.",
+  "author": {
+    "name": "Maxwell Calkin",
+    "email": "mcalkinmusic@gmail.com",
+    "url": "https://github.com/MaxwellCalkin"
+  },
+  "homepage": "https://github.com/MaxwellCalkin/sentinel-ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MaxwellCalkin/sentinel-ai"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "safety",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "pii-detection",
+    "content-moderation",
+    "secrets-scanning"
+  ],
+  "server": {
+    "type": "python",
+    "entry_point": "server/mcp_server.py",
+    "mcp_config": {
+      "command": "python",
+      "args": ["${__dirname}/server/mcp_server.py"]
+    }
+  },
+  "tools": [
+    {
+      "name": "scan_text",
+      "description": "Scan text for safety issues including prompt injection, PII, harmful content, toxicity, and obfuscation"
+    },
+    {
+      "name": "scan_code",
+      "description": "Scan code for security vulnerabilities (SQL injection, command injection, XSS, path traversal)"
+    },
+    {
+      "name": "scan_batch",
+      "description": "Scan multiple texts for safety issues in a single call"
+    },
+    {
+      "name": "redact_pii",
+      "description": "Redact PII (emails, SSNs, credit cards, phone numbers) from text"
+    },
+    {
+      "name": "scan_secrets",
+      "description": "Scan for hardcoded API keys, tokens, passwords, and credentials"
+    },
+    {
+      "name": "run_benchmark",
+      "description": "Run the 600-case accuracy benchmark suite"
+    },
+    {
+      "name": "run_eval",
+      "description": "Run the adversarial evaluation suite (55 cases, 6 categories)"
+    },
+    {
+      "name": "harden_prompt",
+      "description": "Apply prompt hardening techniques to protect system prompts from injection"
+    },
+    {
+      "name": "guard_tool_call",
+      "description": "Validate a tool call for safety before execution"
+    }
+  ],
+  "user_config": {
+    "block_threshold": {
+      "type": "string",
+      "title": "Block Threshold",
+      "description": "Risk level at which content is blocked (NONE, LOW, MEDIUM, HIGH, CRITICAL)",
+      "default": "HIGH"
+    },
+    "redact_pii": {
+      "type": "boolean",
+      "title": "Auto-Redact PII",
+      "description": "Automatically redact detected PII in scan results",
+      "default": true
+    }
+  }
+}
