@@ -1,0 +1,45 @@
+# Sentinel AI — Guard Policy Example
+# Version-controlled security policy for agentic AI sessions.
+# Load with: GuardPolicy.from_yaml("guard_policy.yaml")
+
+version: "1.0"
+
+# Block threshold: block any tool call at or above this risk level
+# Options: none, low, medium, high, critical
+block_on: high
+
+# Additional command patterns to block (substring match)
+blocked_commands:
+  - rm -rf
+  - mkfs
+  - "dd if=/dev/"
+  - docker push
+  - npm publish
+
+# Sensitive paths that trigger warnings
+sensitive_paths:
+  - .env
+  - .aws/credentials
+  - .aws/config
+  - .ssh/id_rsa
+  - .ssh/id_ed25519
+  - credentials.json
+  - .kube/config
+
+# Tool allowlist — only these tools are permitted (empty = all allowed)
+allowed_tools: []
+
+# Tool denylist — these tools are always blocked
+denied_tools: []
+
+# Per-session rate limits (max calls per tool)
+rate_limits:
+  bash: 100
+  default: 500
+
+# Custom blocking rules (regex patterns)
+custom_blocks:
+  - pattern: "curl.*\\|.*bash"
+    reason: "pipe_to_shell_blocked"
+  - pattern: "/prod/.*\\.conf"
+    reason: "production_config_protected"

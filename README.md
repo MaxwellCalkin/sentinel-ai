@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-1173%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-1199%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -943,6 +943,47 @@ print(report["active_chains"])
 
 Combines: SessionAudit (tamper-evident logging) + AttackChainDetector (multi-step attack detection) + ThreatFeed (known attack pattern matching). Configurable block threshold, custom rules, and full JSON export.
 
+#### Policy-as-Code for SessionGuard
+
+Define security policies as YAML files for version-controlled, auditable safety configuration:
+
+```yaml
+# guard_policy.yaml
+version: "1.0"
+block_on: high
+blocked_commands:
+  - rm -rf
+  - mkfs
+  - "dd if=/dev/"
+sensitive_paths:
+  - .env
+  - .aws/credentials
+allowed_tools:
+  - bash
+  - read_file
+  - Write
+denied_tools:
+  - curl
+  - wget
+rate_limits:
+  bash: 50
+  default: 200
+custom_blocks:
+  - pattern: "npm publish"
+    reason: "npm_publish_blocked"
+  - pattern: "/prod/"
+    reason: "production_access_blocked"
+```
+
+```python
+from sentinel.guard_policy import GuardPolicy
+
+policy = GuardPolicy.from_yaml("guard_policy.yaml")
+issues = policy.validate()  # Check for config errors
+guard = policy.create_guard(session_id="s-1", user_id="user@org.com")
+# Guard now enforces all policy rules automatically
+```
+
 ### Session Replay & Forensic Analysis
 
 Load an exported audit trail and replay it for forensic analysis — extract IOCs, identify attack chains, generate incident reports:
@@ -1158,6 +1199,7 @@ sentinel/
   session_audit.py     # Tamper-evident session audit trail (SIEM export)
   session_guard.py     # Unified real-time safety guard for agentic sessions
   session_replay.py    # Forensic analysis and incident reports from audit trails
+  guard_policy.py      # Declarative YAML policy engine for SessionGuard
   client.py            # Python SDK client (sync + async)
   middleware/          # Claude, Claude Agent SDK, OpenAI, LangChain, LlamaIndex
   benchmarks.py        # Precision/recall benchmark suite
