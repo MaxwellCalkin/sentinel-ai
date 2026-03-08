@@ -62,7 +62,7 @@ https://github.com/MaxwellCalkin/sentinel-ai
 ---
 
 ## To: Andrew Zloto (Head of Capital Markets & Corporate Development, Anthropic)
-## Via: LinkedIn message or azloto@anthropic.com (verify email)
+## Via: LinkedIn message, or try andrew@anthropic.com / azloto@anthropic.com
 ## Subject: Sentinel AI — open-source safety guardrails SDK purpose-built for the Claude ecosystem
 
 Hi Andrew,
