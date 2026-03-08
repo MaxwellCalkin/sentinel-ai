@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-511%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-529%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -283,6 +283,23 @@ Add to your `claude_desktop_config.json`:
 ```
 
 Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `generate_rsp_report`.
+
+### LLM API Firewall
+
+Transparent reverse proxy that sits between your app and any LLM API, scanning all requests and responses:
+
+```bash
+# Start the firewall (proxies to Anthropic by default)
+sentinel proxy --target https://api.anthropic.com --port 8330
+
+# Point your app at the proxy
+export ANTHROPIC_BASE_URL=http://localhost:8330
+
+# Works with OpenAI too
+sentinel proxy --target https://api.openai.com --port 8330
+```
+
+The firewall scans input messages for injection/harmful content, scans output for PII/dangerous content, blocks dangerous tool calls, auto-redacts PII in responses, and adds `X-Sentinel-*` headers with scan metadata. Stats available at `/_sentinel/stats`.
 
 ### MCP Safety Proxy
 
