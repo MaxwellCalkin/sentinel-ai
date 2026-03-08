@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-601%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -287,6 +287,7 @@ sentinel red-team "Ignore all previous instructions"
 sentinel benchmark
 sentinel code-scan --file app.py   # Scan code for OWASP vulnerabilities
 sentinel pre-commit                # Scan git staged files (git hook)
+sentinel audit                     # Audit project security config (score out of 100)
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
@@ -358,6 +359,18 @@ sentinel pre-commit --block-on critical  # Only block critical findings
 ```
 
 The pre-commit hook scans `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.rb`, `.php`, `.java`, `.go`, `.rs` files for SQL injection, command injection, XSS, hardcoded secrets, and other OWASP vulnerabilities.
+
+### Security Audit
+
+Audit your project's Claude Code security configuration and get a score out of 100:
+
+```bash
+sentinel audit                  # Audit current directory
+sentinel audit --format json    # JSON output for CI/CD integration
+sentinel audit --dir /path/to/project
+```
+
+Checks 6 areas: Claude Code hooks, permissions allowlist, security policy, environment files, git pre-commit hooks, and MCP server configuration. Returns exit code 1 if critical issues are found.
 
 ### MCP Safety Proxy
 

@@ -344,6 +344,36 @@ def cmd_proxy(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    """Audit project security configuration."""
+    from sentinel.audit import run_audit
+
+    project_dir = Path(args.dir) if args.dir else None
+    report = run_audit(project_dir)
+
+    if args.format == "json":
+        print(json.dumps({
+            "score": report.score,
+            "checks_passed": report.checks_passed,
+            "checks_total": report.checks_total,
+            "critical": report.critical_count,
+            "warnings": report.warning_count,
+            "findings": [
+                {
+                    "check": f.check,
+                    "severity": f.severity.value,
+                    "message": f.message,
+                    "fix": f.fix,
+                }
+                for f in report.findings
+            ],
+        }, indent=2))
+    else:
+        print(report.summary())
+
+    return 0 if report.critical_count == 0 else 1
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -361,7 +391,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.0")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.1")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -486,6 +516,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Minimum risk level to block (default: high)",
     )
 
+    # audit command
+    audit_parser = subparsers.add_parser(
+        "audit", help="Audit project security configuration (hooks, permissions, policy)"
+    )
+    audit_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+    audit_parser.add_argument(
+        "--dir", "-d", help="Project directory to audit (default: current directory)"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -512,6 +553,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_mcp_proxy(args)
     elif args.command == "proxy":
         return cmd_proxy(args)
+    elif args.command == "audit":
+        return cmd_audit(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:

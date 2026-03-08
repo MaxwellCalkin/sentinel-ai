@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-03-08
+
+### Added
+- **Security Audit** — `sentinel audit` scores project security configuration (0-100) across 6 checks: Claude Code hooks, permissions allowlist, security policy, .env files, git pre-commit hooks, MCP config
+  - JSON output for CI/CD integration (`--format json`)
+  - Returns exit code 1 if critical issues found
+- 31 new audit tests
+
+### Changed
+- Test count: 570 → 601
+
 ## [0.8.0] - 2026-03-08
 
 ### Added
