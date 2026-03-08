@@ -408,6 +408,45 @@ class TestCrossTurnAttacks:
         assert any(a["category"] == "context_manipulation" for a in attacks)
 
 
+class TestHardenPrompt:
+    def test_basic_hardening(self):
+        result = handle_tool_call({
+            "name": "harden_prompt",
+            "arguments": {"prompt": "You are a helpful assistant."},
+        })
+        content = json.loads(result["content"][0]["text"])
+        hardened = content["hardened_prompt"]
+        assert "<system_instructions>" in hardened
+        assert "IMPORTANT" in hardened
+        assert content["hardened_length"] > content["original_length"]
+
+    def test_custom_app_name(self):
+        result = handle_tool_call({
+            "name": "harden_prompt",
+            "arguments": {"prompt": "Help users.", "app_name": "MedBot"},
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert "MedBot" in content["hardened_prompt"]
+
+    def test_selective_techniques(self):
+        result = handle_tool_call({
+            "name": "harden_prompt",
+            "arguments": {
+                "prompt": "Be helpful.",
+                "techniques": ["xml_tagging"],
+            },
+        })
+        content = json.loads(result["content"][0]["text"])
+        assert "<system_instructions>" in content["hardened_prompt"]
+        assert "techniques_applied" in content
+        assert "xml_tagging" in content["techniques_applied"]
+
+    def test_tools_list_includes_harden(self):
+        result = handle_tools_list({})
+        tool_names = [t["name"] for t in result["tools"]]
+        assert "harden_prompt" in tool_names
+
+
 class TestUnknownTool:
     def test_unknown_tool_error(self):
         result = handle_tool_call({

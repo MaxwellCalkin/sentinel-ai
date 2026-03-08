@@ -12,6 +12,9 @@ import {
   BlockedTermsScanner,
   ConversationGuard,
   CanarySystem,
+  hardenPrompt,
+  fenceUserInput,
+  xmlTagSections,
 } from './index.js';
 
 describe('SentinelGuard', () => {
@@ -491,5 +494,74 @@ describe('CanarySystem', () => {
     const findings = canary.scanOutput(modelOutput);
     assert.ok(findings.length > 0);
     assert.ok(findings[0].metadata.canary_name === 'production');
+  });
+});
+
+// --- Prompt Hardening Tests ---
+
+describe('hardenPrompt', () => {
+  it('should apply all default techniques', () => {
+    const result = hardenPrompt('You are a helpful assistant.');
+    assert.ok(result.includes('<system_instructions>'));
+    assert.ok(result.includes('</system_instructions>'));
+    assert.ok(result.includes('IMPORTANT'));
+    assert.ok(result.includes('immutable'));
+    assert.ok(result.includes('Remember:'));
+  });
+
+  it('should use app name in role lock', () => {
+    const result = hardenPrompt('Help users.', { appName: 'MedBot' });
+    assert.ok(result.includes('MedBot'));
+  });
+
+  it('should repeat core instruction (sandwich defense)', () => {
+    const result = hardenPrompt('You are a math tutor. Help with algebra.');
+    const count = result.split('You are a math tutor.').length - 1;
+    assert.ok(count >= 2);
+  });
+
+  it('should disable all techniques', () => {
+    const result = hardenPrompt('Just be helpful.', {
+      config: { sandwichDefense: false, xmlTagging: false, instructionPriority: false, roleLock: false },
+    });
+    assert.strictEqual(result, 'Just be helpful.');
+  });
+
+  it('should fence user input placeholder', () => {
+    const result = hardenPrompt('Answer: {INPUT}', { userInputPlaceholder: '{INPUT}' });
+    assert.ok(result.includes('BEGIN USER INPUT'));
+    assert.ok(result.includes('END USER INPUT'));
+  });
+});
+
+describe('fenceUserInput', () => {
+  it('should wrap input in fence markers', () => {
+    const result = fenceUserInput('What is 2+2?');
+    assert.ok(result.includes('BEGIN USER INPUT'));
+    assert.ok(result.includes('What is 2+2?'));
+    assert.ok(result.includes('END USER INPUT'));
+  });
+});
+
+describe('xmlTagSections', () => {
+  it('should wrap system instructions', () => {
+    const result = xmlTagSections('Be helpful.');
+    assert.ok(result.includes('<system_instructions>'));
+    assert.ok(result.includes('Be helpful.'));
+  });
+
+  it('should include user input section', () => {
+    const result = xmlTagSections('Be helpful.', { userInput: 'What is AI?' });
+    assert.ok(result.includes('<user_query>'));
+    assert.ok(result.includes('What is AI?'));
+  });
+
+  it('should order sections correctly', () => {
+    const result = xmlTagSections('System.', { userInput: 'Query.', context: 'Context.' });
+    const sysPos = result.indexOf('<system_instructions>');
+    const ctxPos = result.indexOf('<context>');
+    const usrPos = result.indexOf('<user_query>');
+    assert.ok(sysPos < ctxPos);
+    assert.ok(ctxPos < usrPos);
   });
 });

@@ -270,6 +270,37 @@ def handle_tools_list(params: dict) -> dict:
                 },
             },
             {
+                "name": "harden_prompt",
+                "description": (
+                    "Apply defensive hardening to a system prompt. Uses multiple "
+                    "injection-resistance techniques: XML section tagging, sandwich "
+                    "defense (instruction repetition), role lock, instruction priority "
+                    "markers, and input fencing. Returns the hardened prompt ready for use."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "The system prompt to harden",
+                        },
+                        "app_name": {
+                            "type": "string",
+                            "description": "Application name for role lock (default: 'this assistant')",
+                        },
+                        "techniques": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": (
+                                "Which techniques to apply. Available: sandwich_defense, "
+                                "xml_tagging, instruction_priority, role_lock. Default: all."
+                            ),
+                        },
+                    },
+                    "required": ["prompt"],
+                },
+            },
+            {
                 "name": "check_canary",
                 "description": (
                     "Scan text for leaked canary tokens. Detects if system "
@@ -314,6 +345,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_scan_secrets(arguments)
     elif tool_name == "check_canary":
         return _tool_check_canary(arguments)
+    elif tool_name == "harden_prompt":
+        return _tool_harden_prompt(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
     else:
@@ -610,6 +643,44 @@ def _tool_test_robustness(args: dict) -> dict:
             {"technique": v.technique, "description": v.description}
             for v in report.evaded
         ],
+    }
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
+    }
+
+
+def _tool_harden_prompt(args: dict) -> dict:
+    from sentinel.harden import harden_prompt, HardeningConfig
+
+    prompt = args.get("prompt", "")
+    app_name = args.get("app_name", "this assistant")
+    techniques = args.get("techniques")
+
+    config = HardeningConfig()
+    if techniques:
+        valid = {"sandwich_defense", "xml_tagging", "instruction_priority", "role_lock"}
+        config = HardeningConfig(
+            sandwich_defense="sandwich_defense" in techniques,
+            xml_tagging="xml_tagging" in techniques,
+            instruction_priority="instruction_priority" in techniques,
+            role_lock="role_lock" in techniques,
+        )
+
+    hardened = harden_prompt(prompt, app_name=app_name, config=config)
+
+    output = {
+        "hardened_prompt": hardened,
+        "techniques_applied": [
+            k for k, v in {
+                "sandwich_defense": config.sandwich_defense,
+                "xml_tagging": config.xml_tagging,
+                "instruction_priority": config.instruction_priority,
+                "role_lock": config.role_lock,
+            }.items() if v
+        ],
+        "original_length": len(prompt),
+        "hardened_length": len(hardened),
     }
 
     return {
