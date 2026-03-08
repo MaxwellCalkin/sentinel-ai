@@ -614,6 +614,183 @@ def cmd_badge(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_guard(args: argparse.Namespace) -> int:
+    """Check a tool call against a guard policy."""
+    from sentinel.guard_policy import GuardPolicy
+
+    # Load policy
+    if args.policy:
+        policy = GuardPolicy.from_yaml(args.policy)
+    else:
+        policy = GuardPolicy.from_dict({
+            "block_on": args.block_on or "high",
+        })
+
+    # Validate policy
+    issues = policy.validate()
+    if issues:
+        for issue in issues:
+            print(f"Policy warning: {issue}", file=sys.stderr)
+
+    # Create guard
+    guard = policy.create_guard(session_id=args.session_id or None)
+
+    if args.stdin:
+        # Read tool calls from stdin (one JSON per line)
+        raw = sys.stdin.read().strip()
+        if not raw:
+            print("Error: empty input", file=sys.stderr)
+            return 1
+
+        try:
+            calls = json.loads(raw)
+            if isinstance(calls, dict):
+                calls = [calls]
+        except json.JSONDecodeError:
+            # Try line-by-line
+            calls = []
+            for line in raw.splitlines():
+                if line.strip():
+                    calls.append(json.loads(line))
+
+        blocked_count = 0
+        for call in calls:
+            tool_name = call.get("tool_name", call.get("tool", ""))
+            tool_args = call.get("arguments", call.get("tool_input", call.get("args", {})))
+            verdict = guard.check(tool_name, tool_args)
+
+            if args.format == "json":
+                print(json.dumps({
+                    "tool": tool_name,
+                    "allowed": verdict.allowed,
+                    "risk": verdict.risk,
+                    "block_reason": verdict.block_reason,
+                    "warnings": verdict.warnings,
+                }))
+            else:
+                status = "ALLOWED" if verdict.allowed else "BLOCKED"
+                risk_str = verdict.risk.upper() if hasattr(verdict.risk, 'upper') else str(verdict.risk).upper()
+                print(f"[{status}] {tool_name} (risk: {risk_str})")
+                if verdict.block_reason:
+                    print(f"  Reason: {verdict.block_reason}")
+                for w in verdict.warnings:
+                    print(f"  Warning: {w}")
+
+            if not verdict.allowed:
+                blocked_count += 1
+
+        return 1 if blocked_count > 0 else 0
+
+    else:
+        # Single tool call from args
+        tool_name = args.tool or ""
+        if not tool_name:
+            print("Error: provide --tool or --stdin", file=sys.stderr)
+            return 1
+
+        tool_args: dict = {}
+        if args.command_str:
+            tool_args["command"] = args.command_str
+        if args.path:
+            tool_args["path"] = args.path
+
+        verdict = guard.check(tool_name, tool_args)
+
+        if args.format == "json":
+            print(json.dumps({
+                "tool": tool_name,
+                "allowed": verdict.allowed,
+                "risk": verdict.risk,
+                "block_reason": verdict.block_reason,
+                "warnings": verdict.warnings,
+            }, indent=2))
+        else:
+            status = "ALLOWED" if verdict.allowed else "BLOCKED"
+            risk_str = verdict.risk.upper() if hasattr(verdict.risk, 'upper') else str(verdict.risk).upper()
+            print(f"[{status}] {tool_name} (risk: {risk_str})")
+            if verdict.block_reason:
+                print(f"  Reason: {verdict.block_reason}")
+            for w in verdict.warnings:
+                print(f"  Warning: {w}")
+
+        return 0 if verdict.allowed else 1
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    """Analyze an exported session audit JSON for forensic review."""
+    from sentinel.session_replay import SessionReplay
+
+    if args.stdin:
+        raw = sys.stdin.read()
+    elif args.file:
+        raw = Path(args.file).read_text(encoding="utf-8")
+    else:
+        print("Error: provide --file or --stdin", file=sys.stderr)
+        return 1
+
+    replay = SessionReplay.from_json(raw)
+    report = replay.incident_report()
+
+    if args.format == "json":
+        print(json.dumps({
+            "session_id": report.session_id,
+            "max_risk": report.max_risk,
+            "total_events": report.total_events,
+            "blocked_events": report.blocked_events,
+            "attack_chains": report.attack_chains,
+            "risk_escalations": [
+                {
+                    "from": e.from_risk,
+                    "to": e.to_risk,
+                    "trigger": e.trigger_tool,
+                    "reason": e.trigger_reason,
+                }
+                for e in report.risk_escalations
+            ],
+            "iocs": [
+                {
+                    "type": i.ioc_type,
+                    "value": i.value,
+                    "risk": i.risk,
+                }
+                for i in report.iocs
+            ],
+            "recommendations": report.recommendations,
+        }, indent=2))
+    else:
+        max_risk_str = report.max_risk.upper() if hasattr(report.max_risk, 'upper') else str(report.max_risk).upper()
+        print(f"Session: {report.session_id}")
+        print(f"Max Risk: {max_risk_str}")
+        print(f"Events: {report.total_events} total, {report.blocked_events} blocked")
+        print(f"Chains: {len(report.attack_chains)}")
+
+        if report.risk_escalations:
+            print(f"\nRisk Escalations ({len(report.risk_escalations)}):")
+            for e in report.risk_escalations:
+                print(f"  {e.from_risk} → {e.to_risk} (trigger: {e.trigger_tool})")
+
+        if report.iocs:
+            print(f"\nIndicators of Compromise ({len(report.iocs)}):")
+            for i in report.iocs:
+                risk_str = i.risk.upper() if hasattr(i.risk, 'upper') else str(i.risk).upper()
+                print(f"  [{risk_str}] {i.ioc_type}: {i.value[:80]}")
+
+        timeline = replay.attack_timeline()
+        if timeline:
+            print(f"\nAttack Timeline ({len(timeline)} events):")
+            for entry in timeline[:10]:
+                reason = entry.get("reason", "") or ", ".join(entry.get("findings", []))
+                print(f"  [{entry['risk']}] {entry['tool_name']}: {reason}")
+
+        if report.recommendations:
+            print(f"\nRecommendations:")
+            for r in report.recommendations:
+                print(f"  - {r}")
+
+    has_critical = report.max_risk in ("critical",)
+    return 1 if has_critical else 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -831,6 +1008,36 @@ def main(argv: list[str] | None = None) -> int:
     badge_parser.add_argument("--dir", "-d", help="Project directory (default: current directory)")
     badge_parser.add_argument("--output", "-o", help="Output file path (default: stdout)")
 
+    # guard command
+    guard_parser = subparsers.add_parser(
+        "guard", help="Check tool calls against a guard policy (policy-as-code)"
+    )
+    guard_parser.add_argument("--policy", "-p", help="YAML/JSON policy file")
+    guard_parser.add_argument(
+        "--block-on",
+        choices=["low", "medium", "high", "critical"],
+        default="high",
+        help="Block threshold (default: high, overridden by policy file)",
+    )
+    guard_parser.add_argument("--tool", "-t", help="Tool name to check")
+    guard_parser.add_argument("--command", dest="command_str", help="Command argument for the tool")
+    guard_parser.add_argument("--path", help="Path argument for the tool")
+    guard_parser.add_argument("--stdin", action="store_true", help="Read tool calls from stdin (JSON)")
+    guard_parser.add_argument("--session-id", help="Session ID for tracking")
+    guard_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
+    # replay command
+    replay_parser = subparsers.add_parser(
+        "replay", help="Forensic analysis of an exported session audit trail"
+    )
+    replay_parser.add_argument("--file", "-f", help="Session audit JSON file")
+    replay_parser.add_argument("--stdin", action="store_true", help="Read from stdin")
+    replay_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -871,6 +1078,10 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_project_scan(args)
     elif args.command == "badge":
         return cmd_badge(args)
+    elif args.command == "guard":
+        return cmd_guard(args)
+    elif args.command == "replay":
+        return cmd_replay(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:

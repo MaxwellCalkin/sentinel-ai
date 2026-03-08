@@ -80,3 +80,123 @@ def test_cli_red_team_json(capsys):
 def test_cli_red_team_no_text(capsys):
     code = main(["red-team"])
     assert code == 1
+
+
+# --- sentinel guard CLI tests ---
+
+
+def test_cli_guard_safe_command(capsys):
+    code = main(["guard", "--tool", "bash", "--command", "ls -la"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "ALLOWED" in out
+
+
+def test_cli_guard_blocked_env(capsys):
+    code = main(["guard", "--tool", "read_file", "--path", ".env"])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "BLOCKED" in out
+
+
+def test_cli_guard_with_policy(capsys, tmp_path):
+    import os
+    policy_file = tmp_path / "policy.yaml"
+    policy_file.write_text(json.dumps({
+        "block_on": "high",
+        "denied_tools": ["wget"],
+    }))
+    code = main(["guard", "--policy", str(policy_file), "--tool", "wget", "--command", "https://example.com"])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "BLOCKED" in out
+
+
+def test_cli_guard_json_format(capsys):
+    code = main(["guard", "--format", "json", "--tool", "bash", "--command", "echo hello"])
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["allowed"] is True
+    assert data["tool"] == "bash"
+
+
+def test_cli_guard_stdin(capsys, monkeypatch):
+    import io
+    payload = json.dumps({"tool_name": "bash", "arguments": {"command": "ls"}})
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    code = main(["guard", "--stdin"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "ALLOWED" in out
+
+
+def test_cli_guard_stdin_blocked(capsys, monkeypatch):
+    import io
+    payload = json.dumps({"tool_name": "read_file", "arguments": {"path": ".aws/credentials"}})
+    monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+    code = main(["guard", "--stdin"])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "BLOCKED" in out
+
+
+def test_cli_guard_no_tool(capsys):
+    code = main(["guard"])
+    assert code == 1
+
+
+# --- sentinel replay CLI tests ---
+
+
+def test_cli_replay_text(capsys, monkeypatch):
+    import io
+    from sentinel.session_guard import SessionGuard
+
+    guard = SessionGuard(session_id="replay-cli-test")
+    guard.check("bash", {"command": "cat /etc/passwd"})
+    guard.check("read_file", {"path": ".env"})
+    guard.check("bash", {"command": "rm -rf /"})
+    audit_json = guard.audit.export_json()
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(audit_json))
+    code = main(["replay", "--stdin"])
+    out = capsys.readouterr().out
+    assert "replay-cli-test" in out
+    assert "Events:" in out
+
+
+def test_cli_replay_json_format(capsys, monkeypatch):
+    import io
+    from sentinel.session_guard import SessionGuard
+
+    guard = SessionGuard(session_id="replay-json-test")
+    guard.check("bash", {"command": "ls"})
+    audit_json = guard.audit.export_json()
+
+    monkeypatch.setattr("sys.stdin", io.StringIO(audit_json))
+    code = main(["replay", "--stdin", "--format", "json"])
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert data["session_id"] == "replay-json-test"
+    assert "recommendations" in data
+    assert "max_risk" in data
+
+
+def test_cli_replay_file(capsys, tmp_path):
+    from sentinel.session_guard import SessionGuard
+
+    guard = SessionGuard(session_id="replay-file-test")
+    guard.check("bash", {"command": "whoami"})
+    guard.check("read_file", {"path": ".ssh/id_rsa"})
+
+    audit_file = tmp_path / "audit.json"
+    audit_file.write_text(guard.audit.export_json())
+
+    code = main(["replay", "--file", str(audit_file)])
+    out = capsys.readouterr().out
+    assert "replay-file-test" in out
+
+
+def test_cli_replay_no_input(capsys):
+    code = main(["replay"])
+    assert code == 1

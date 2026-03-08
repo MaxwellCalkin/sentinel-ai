@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-1373%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-1384%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -293,6 +293,8 @@ sentinel dep-scan                  # Scan dependencies for supply chain attacks
 sentinel secrets-scan              # Scan source files for hardcoded secrets/API keys
 sentinel mcp-validate --file tools.json  # Validate MCP tool schemas for injection
 sentinel project-scan              # Comprehensive scan — runs ALL scanners, 0-100 score
+sentinel guard --policy policy.yaml --tool bash --command "rm -rf /"  # Policy-as-code check
+sentinel replay --file audit.json  # Forensic analysis of session audit trail
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
