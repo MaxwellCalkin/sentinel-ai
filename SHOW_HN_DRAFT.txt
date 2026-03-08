@@ -24,7 +24,8 @@ What it does:
 - 546-case benchmark with 100% accuracy (329 TP, 0 FP, 217 TN, 0 FN)
 - SARIF v2.1.0 output for GitHub Code Scanning integration
 - Git pre-commit hook: `sentinel pre-commit` scans staged code for OWASP vulnerabilities
-- 570 tests passing
+- Security audit: `sentinel audit` scores your project's security config (0-100)
+- 601 tests passing
 
 Quick start:
 ```bash
@@ -51,7 +52,7 @@ What makes it different from NeMo Guardrails, LLM Guard, etc:
 
 I know regex-based detection has limits (adversarial evasion, novel attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment or model-based tools like Claude Code Security. They're complementary: Sentinel AI catches known patterns in ~0.05ms, then the model does the deep reasoning.
 
-Apache 2.0 licensed. 570 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
+Apache 2.0 licensed. 601 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
 
 
 REDDIT POST DRAFT (r/MachineLearning, r/LocalLLaMA)

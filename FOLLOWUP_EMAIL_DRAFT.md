@@ -1,11 +1,11 @@
 # Follow-up Email Draft (send Wed March 11 if no reply)
 
 ## To: chrismacleod@anthropic.com
-## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 570 tests)
+## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 601 tests)
 
 Hi Christopher,
 
-Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.8.0 with features I think are particularly relevant to Anthropic:
+Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.8.1 with features I think are particularly relevant to Anthropic:
 
 **MCP Safety Proxy** — `sentinel mcp-proxy` wraps any MCP server with safety scanning. Intercepts all tool calls, blocks dangerous operations, auto-redacts PII in responses. This addresses the hook bypass issues in Claude Code (#21460 — hooks not enforced on subagent tool calls) by operating at the transport layer.
 
@@ -17,7 +17,7 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **Claude Code attack detection** — Detects the exact vectors from CVE-2025-59536 and CVE-2026-21852, obfuscated payloads (base64/hex/ROT13/leetspeak), and streaming output scanning.
 
-Current state: 10 scanners, 570 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs (Python + TypeScript). PR #2 on claude-agent-sdk was merged. 25+ substantive comments on Claude Code security issues. Plugin submitted to Claude Code marketplace.
+Current state: 10 scanners, 601 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs (Python + TypeScript). PR #2 on claude-agent-sdk was merged. 27+ substantive comments on Claude Code security issues. Plugin submitted to Claude Code marketplace.
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -28,27 +28,27 @@ https://github.com/MaxwellCalkin/sentinel-ai
 ---
 
 ## To: jblack@anthropic.com, vgupta@anthropic.com
-## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem (v0.8.0)
+## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem (v0.8.1)
 
 Hi James and Vishal,
 
 Following up from Saturday. Sentinel AI has evolved significantly — here's a quick snapshot:
 
-**v0.8.0 highlights:**
+**v0.8.1 highlights:**
 - SARIF v2.1.0 output — GitHub Code Scanning integration via GitHub Action
 - Git pre-commit hook — scans staged code for OWASP vulnerabilities
 - LLM API Firewall — transparent proxy for any LLM API, no code changes needed
 - MCP Safety Proxy — transparent safety layer for any MCP server
 - Code vulnerability scanner + obfuscation detection
 - Streaming safety scanning — real-time output scanning for Anthropic streaming API
-- 10 scanners, 570 tests, 546-case benchmark at 100% accuracy
+- 10 scanners, 601 tests, 546-case benchmark at 100% accuracy
 - Dual SDKs: Python + TypeScript (standalone, zero runtime deps)
 
 **Anthropic ecosystem integration:**
 - PR #2 on claude-agent-sdk — merged
 - PRs on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
-- 25+ substantive comments on Claude Code security issues (disallowedTools bypass, MCP guardrail override, rm -rf prevention, destructive command detection, subagent safety, etc.)
+- 27+ substantive comments on Claude Code security issues (disallowedTools bypass, MCP guardrail override, rm -rf prevention, destructive command detection, subagent safety, etc.)
 - Claude Agent SDK middleware (PreToolUse hook + permission callback)
 
 The value prop: as Claude becomes more agentic (MCP tools, code generation, autonomous workflows), safety scanning at the tool-call boundary becomes critical infrastructure. Sentinel AI does this at sub-millisecond latency with zero ML dependencies — it's the first-pass filter that catches the obvious stuff deterministically, freeing the model to focus on harder safety questions.
@@ -85,8 +85,8 @@ This complements Claude Code Security (model-based deep analysis) as the fast, d
 - PR #2 on claude-agent-sdk — merged by Anthropic
 - PRs on claude-quickstarts, security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
-- 25+ substantive comments on Claude Code security issues
-- 570 tests, 546-case benchmark at 100% accuracy
+- 27+ substantive comments on Claude Code security issues
+- 601 tests, 546-case benchmark at 100% accuracy
 - Dual SDKs: Python + TypeScript
 - Apache 2.0 licensed
 
