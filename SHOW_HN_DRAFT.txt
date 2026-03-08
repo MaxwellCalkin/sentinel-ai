@@ -10,14 +10,17 @@ Comment (post this as the first comment):
 Hi HN! I built Sentinel AI because I was frustrated that every LLM safety tool required GPU inference, API calls, or heavy ML dependencies. I wanted guardrails I could drop into any Python app with zero latency overhead.
 
 What it does:
-- 8 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, tool-use safety, and structured output validation (XSS/SQLi in JSON)
+- 9 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, tool-use safety, structured output validation (XSS/SQLi in JSON), and OWASP code vulnerability detection
+- MCP safety proxy: `sentinel mcp-proxy` wraps any MCP server with safety scanning — blocks dangerous tool calls, auto-redacts PII in responses
 - Claude Code hooks: `sentinel hook` scans every tool call before execution, blocks dangerous commands in real-time
+- Code vulnerability scanner: detects SQL injection, command injection, XSS, hardcoded secrets, insecure deserialization in LLM-generated code
 - Multi-turn conversation safety: detects gradual jailbreak escalation across turns
 - Built-in adversarial red-teaming: generates 10+ evasion variants (homoglyphs, zero-width chars, leetspeak) to stress-test your scanners
 - ~0.05ms average scan latency -- no GPU, no API calls
 - Single dependency: `regex`
 - Multilingual injection detection: 12 languages + cross-lingual attacks
 - 530-case benchmark with 100% accuracy (317 TP, 0 FP, 213 TN, 0 FN)
+- 457 tests passing
 
 Quick start:
 ```bash
