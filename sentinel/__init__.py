@@ -50,6 +50,7 @@ from sentinel.self_heal import StructuredGenerator, GenerationResult
 from sentinel.risk_router import RiskRouter, ModelTier, RouteDecision
 from sentinel.prompt_firewall import PromptFirewall, Rule as FirewallRule, Action as FirewallAction
 from sentinel.similarity_guard import SimilarityGuard, SimilarityResult
+from sentinel.input_sanitizer import InputSanitizer, SanitizeResult
 
 __version__ = "0.17.0"
 
@@ -135,4 +136,6 @@ __all__ = [
     "FirewallAction",
     "SimilarityGuard",
     "SimilarityResult",
+    "InputSanitizer",
+    "SanitizeResult",
 ]
