@@ -43,6 +43,7 @@ from sentinel.openai_wrapper import (
     SafeAsyncOpenAI,
     SafeChatResponse,
 )
+from sentinel.token_budget import TokenBudget, TokenUsage, BudgetExceededError, estimate_cost
 
 __version__ = "0.17.0"
 
@@ -108,4 +109,8 @@ __all__ = [
     "SafeOpenAI",
     "SafeAsyncOpenAI",
     "SafeChatResponse",
+    "TokenBudget",
+    "TokenUsage",
+    "BudgetExceededError",
+    "estimate_cost",
 ]
