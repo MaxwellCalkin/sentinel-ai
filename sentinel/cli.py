@@ -239,6 +239,43 @@ def cmd_mcp_proxy(args: argparse.Namespace) -> int:
     return run_proxy(args.upstream_cmd, block_threshold=threshold)
 
 
+def cmd_proxy(args: argparse.Namespace) -> int:
+    """Run the LLM API firewall proxy."""
+    try:
+        import uvicorn
+    except ImportError:
+        print("Error: install sentinel-ai[api] for proxy support (pip install sentinel-guardrails[api])", file=sys.stderr)
+        return 1
+
+    from sentinel.proxy import create_proxy_app, ProxyConfig
+    from sentinel.core import RiskLevel
+
+    threshold = RiskLevel[args.block_on.upper()]
+    config = ProxyConfig(
+        target_url=args.target.rstrip("/"),
+        port=args.port,
+        scan_input=not args.no_input_scan,
+        scan_output=not args.no_output_scan,
+        redact_pii=not args.no_redact,
+        block_threshold=threshold,
+    )
+
+    print(f"Sentinel AI Firewall starting on port {config.port}")
+    print(f"  Target: {config.target_url}")
+    print(f"  Input scanning: {'ON' if config.scan_input else 'OFF'}")
+    print(f"  Output scanning: {'ON' if config.scan_output else 'OFF'}")
+    print(f"  PII redaction: {'ON' if config.redact_pii else 'OFF'}")
+    print(f"  Block threshold: {threshold.value}")
+    print()
+    print(f"Point your app at http://localhost:{config.port}")
+    print(f"  export ANTHROPIC_BASE_URL=http://localhost:{config.port}")
+    print()
+
+    app = create_proxy_app(config)
+    uvicorn.run(app, host="0.0.0.0", port=config.port)
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -333,6 +370,37 @@ def main(argv: list[str] | None = None) -> int:
         help="Upstream MCP server command (after --)",
     )
 
+    # proxy command (LLM API firewall)
+    fw_parser = subparsers.add_parser(
+        "proxy", help="Run as a transparent LLM API firewall (reverse proxy)"
+    )
+    fw_parser.add_argument(
+        "--target", "-t", default="https://api.anthropic.com",
+        help="Target LLM API URL (default: https://api.anthropic.com)",
+    )
+    fw_parser.add_argument(
+        "--port", "-p", type=int, default=8330,
+        help="Local proxy port (default: 8330)",
+    )
+    fw_parser.add_argument(
+        "--no-input-scan", action="store_true",
+        help="Disable input scanning",
+    )
+    fw_parser.add_argument(
+        "--no-output-scan", action="store_true",
+        help="Disable output scanning",
+    )
+    fw_parser.add_argument(
+        "--no-redact", action="store_true",
+        help="Disable PII redaction in responses",
+    )
+    fw_parser.add_argument(
+        "--block-on",
+        choices=["low", "medium", "high", "critical"],
+        default="high",
+        help="Minimum risk level to block (default: high)",
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -355,6 +423,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_code_scan(args)
     elif args.command == "mcp-proxy":
         return cmd_mcp_proxy(args)
+    elif args.command == "proxy":
+        return cmd_proxy(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
