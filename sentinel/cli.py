@@ -183,6 +183,19 @@ def cmd_hook(args: argparse.Namespace) -> int:
     return run_hook()
 
 
+def cmd_mcp_proxy(args: argparse.Namespace) -> int:
+    from sentinel.mcp_proxy import run_proxy
+    from sentinel.core import RiskLevel
+
+    if not args.upstream_cmd:
+        print("Error: provide upstream MCP server command after --", file=sys.stderr)
+        print("Example: sentinel mcp-proxy -- npx @mcp/server-filesystem /tmp", file=sys.stderr)
+        return 1
+
+    threshold = RiskLevel[args.block_on.upper()] if args.block_on else RiskLevel.HIGH
+    return run_proxy(args.upstream_cmd, block_threshold=threshold)
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -251,6 +264,21 @@ def main(argv: list[str] | None = None) -> int:
         "hook", help="Run as a Claude Code PreToolUse hook (reads event from stdin)"
     )
 
+    # mcp-proxy command
+    proxy_parser = subparsers.add_parser(
+        "mcp-proxy", help="Run as a safety proxy for any MCP server"
+    )
+    proxy_parser.add_argument(
+        "--block-on",
+        choices=["low", "medium", "high", "critical"],
+        default="high",
+        help="Minimum risk level to block (default: high)",
+    )
+    proxy_parser.add_argument(
+        "upstream_cmd", nargs=argparse.REMAINDER,
+        help="Upstream MCP server command (after --)",
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -269,6 +297,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_init(args)
     elif args.command == "hook":
         return cmd_hook(args)
+    elif args.command == "mcp-proxy":
+        return cmd_mcp_proxy(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
