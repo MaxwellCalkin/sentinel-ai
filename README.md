@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-1563%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-1574%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-561%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -139,6 +139,21 @@ const depFindings = deps.scan('{"dependencies":{"crossenv":"^1.0.0"}}', 'package
 ```
 
 Use as a [Claude Code PostToolUse hook](examples/claude_code_hook.ts) to scan code as it's written — blocks Write/Edit on high/critical vulnerabilities.
+
+### Adversarial Eval Suite
+
+```typescript
+import { EvalRunner } from '@sentinel-ai/sdk';
+
+// Run built-in adversarial test suite (55 cases)
+const runner = new EvalRunner();
+const report = runner.runBuiltin();
+console.log(`Accuracy: ${(report.accuracy * 100).toFixed(1)}%`);
+console.log(`TP: ${report.truePositives} TN: ${report.trueNegatives} FP: ${report.falsePositives} FN: ${report.falseNegatives}`);
+console.log(runner.formatReport(report));
+```
+
+Test your safety pipeline against injection, obfuscation, PII, harmful content, toxicity, and benign false-positive cases. Also available in the [live demo](https://maxwellcalkin.github.io/sentinel-ai/) under the "Eval Suite" tab.
 
 ## Quick Start
 
