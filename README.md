@@ -509,9 +509,16 @@ app = create_authenticated_app()
 ## GitHub Action
 
 ```yaml
+# Scan PR body for safety issues
 - uses: MaxwellCalkin/sentinel-ai@main
   with:
     text: ${{ github.event.pull_request.body }}
+    block-on: high
+
+# Scan generated code for OWASP vulnerabilities
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    code-scan: src/generated_output.py
     block-on: high
 ```
 

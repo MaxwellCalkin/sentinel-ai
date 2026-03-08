@@ -1,63 +1,90 @@
 name: "Sentinel AI Safety Scan"
-description: "Scan LLM prompts and outputs for safety issues in your CI/CD pipeline"
+description: "Scan LLM prompts, outputs, and generated code for safety issues in CI/CD"
 author: "Sentinel AI"
+branding:
+  icon: "shield"
+  color: "blue"
 
 inputs:
   text:
-    description: "Text to scan"
+    description: "Text to scan for safety issues"
     required: false
   file:
     description: "Path to file containing text to scan"
+    required: false
+  code-scan:
+    description: "Path to source file to scan for OWASP vulnerabilities"
     required: false
   format:
     description: "Output format: text or json"
     required: false
     default: "json"
-  fail-on-risk:
-    description: "Fail the action if risk >= this level (none, low, medium, high, critical)"
+  block-on:
+    description: "Fail if risk >= this level (none, low, medium, high, critical)"
     required: false
     default: "high"
 
 outputs:
   safe:
     description: "Whether the text passed safety checks"
+    value: ${{ steps.scan.outputs.safe }}
   risk:
     description: "Overall risk level"
+    value: ${{ steps.scan.outputs.risk }}
   findings:
     description: "JSON array of findings"
+    value: ${{ steps.scan.outputs.findings }}
   redacted:
     description: "Redacted text with PII removed"
+    value: ${{ steps.scan.outputs.redacted }}
 
 runs:
   using: "composite"
   steps:
     - name: Install Sentinel AI
       shell: bash
-      run: pip install sentinel-ai
+      run: pip install sentinel-guardrails
 
     - name: Run scan
       id: scan
       shell: bash
       run: |
-        if [ -n "${{ inputs.file }}" ]; then
+        if [ -n "${{ inputs.code-scan }}" ]; then
+          RESULT=$(sentinel code-scan --file "${{ inputs.code-scan }}" --format json)
+          RISK="none"
+          if echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if any(f['risk']=='critical' for f in d) else 1)" 2>/dev/null; then
+            RISK="critical"
+          elif echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if any(f['risk']=='high' for f in d) else 1)" 2>/dev/null; then
+            RISK="high"
+          elif echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if len(d)>0 else 1)" 2>/dev/null; then
+            RISK="medium"
+          fi
+          SAFE=$( [ "$RISK" = "none" ] && echo "True" || echo "False" )
+          echo "safe=$SAFE" >> $GITHUB_OUTPUT
+          echo "risk=$RISK" >> $GITHUB_OUTPUT
+          echo "findings=$RESULT" >> $GITHUB_OUTPUT
+        elif [ -n "${{ inputs.file }}" ]; then
           RESULT=$(sentinel scan --file "${{ inputs.file }}" --format json)
+          echo "safe=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['safe'])")" >> $GITHUB_OUTPUT
+          echo "risk=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")" >> $GITHUB_OUTPUT
+          echo "findings=$(echo "$RESULT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('findings',[])))")" >> $GITHUB_OUTPUT
+          echo "redacted=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('redacted_text',''))")" >> $GITHUB_OUTPUT
         elif [ -n "${{ inputs.text }}" ]; then
           RESULT=$(sentinel scan "${{ inputs.text }}" --format json)
+          echo "safe=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['safe'])")" >> $GITHUB_OUTPUT
+          echo "risk=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")" >> $GITHUB_OUTPUT
+          echo "findings=$(echo "$RESULT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('findings',[])))")" >> $GITHUB_OUTPUT
+          echo "redacted=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('redacted_text',''))")" >> $GITHUB_OUTPUT
         else
-          echo "Error: provide either 'text' or 'file' input"
+          echo "Error: provide 'text', 'file', or 'code-scan' input"
           exit 1
         fi
-        echo "result=$RESULT" >> $GITHUB_OUTPUT
-        SAFE=$(echo "$RESULT" | python -c "import sys,json; print(json.load(sys.stdin)['safe'])")
-        RISK=$(echo "$RESULT" | python -c "import sys,json; print(json.load(sys.stdin)['risk'])")
-        echo "safe=$SAFE" >> $GITHUB_OUTPUT
-        echo "risk=$RISK" >> $GITHUB_OUTPUT
 
     - name: Check threshold
       shell: bash
       run: |
         RISK="${{ steps.scan.outputs.risk }}"
-        THRESHOLD="${{ inputs.fail-on-risk }}"
+        THRESHOLD="${{ inputs.block-on }}"
         LEVELS="none low medium high critical"
         RISK_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${RISK}$" | cut -d: -f1)
         THRESH_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${THRESHOLD}$" | cut -d: -f1)
