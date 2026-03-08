@@ -112,6 +112,7 @@ Add to any CI pipeline in 3 lines with our GitHub Action.
 
 Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
 GitHub: https://github.com/MaxwellCalkin/sentinel-ai
+Blog: https://maxwellcalkin.github.io/sentinel-ai/blog/zero-latency-guardrails.html
 Blog: https://maxwellcalkin.github.io/sentinel-ai/blog/claude-md-attacks.html
 
 Apache 2.0 licensed.
