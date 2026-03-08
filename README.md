@@ -4,8 +4,9 @@
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-500%20cases%20100%25-brightgreen.svg)](#benchmark)
+[![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
-**Real-time safety guardrails for LLM applications.**
+**Real-time safety guardrails for LLM applications.** [Try the live demo](https://maxwellcalkin.github.io/sentinel-ai/)
 
 Sentinel AI is a lightweight, zero-dependency safety layer that protects your LLM applications from prompt injection, PII leaks, harmful content, hallucinations, and toxic outputs — with sub-millisecond latency.
 
