@@ -65,6 +65,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: testpypi
+    continue-on-error: true
     permissions:
       id-token: write
     steps:
