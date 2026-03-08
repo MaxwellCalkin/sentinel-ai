@@ -298,6 +298,8 @@ sentinel replay --file audit.json  # Forensic analysis of session audit trail
 sentinel enforce --file CLAUDE.md --show-rules         # Extract enforceable rules from CLAUDE.md
 sentinel enforce --file CLAUDE.md --tool bash --command "rm -rf /"  # Check against CLAUDE.md rules
 sentinel enforce --file CLAUDE.md --export-policy       # Generate guard policy from CLAUDE.md
+sentinel compliance --sample              # Run compliance assessment (EU AI Act, NIST, ISO 42001)
+sentinel compliance --file prompts.txt --format json  # Assess prompts against regulatory frameworks
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
