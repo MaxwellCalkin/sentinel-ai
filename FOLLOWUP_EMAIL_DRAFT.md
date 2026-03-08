@@ -1,7 +1,7 @@
 # Follow-up Email Draft (send Wed March 11 if no reply)
 
 ## To: chrismacleod@anthropic.com
-## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 601 tests)
+## Subject: Re: Fellow applicant from Sept 2025 — built an AI safety guardrails SDK (now 10 scanners, 615 tests)
 
 Hi Christopher,
 
@@ -17,7 +17,7 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **Claude Code attack detection** — Detects the exact vectors from CVE-2025-59536 and CVE-2026-21852, obfuscated payloads (base64/hex/ROT13/leetspeak), and streaming output scanning.
 
-Current state: 10 scanners, 601 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs (Python + TypeScript). PR #2 on claude-agent-sdk was merged. 27+ substantive comments on Claude Code security issues. Plugin submitted to Claude Code marketplace.
+Current state: 10 scanners, 615 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs (Python + TypeScript). PR #2 on claude-agent-sdk was merged. 27+ substantive comments on Claude Code security issues. Plugin submitted to Claude Code marketplace.
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -41,7 +41,7 @@ Following up from Saturday. Sentinel AI has evolved significantly — here's a q
 - MCP Safety Proxy — transparent safety layer for any MCP server
 - Code vulnerability scanner + obfuscation detection
 - Streaming safety scanning — real-time output scanning for Anthropic streaming API
-- 10 scanners, 601 tests, 546-case benchmark at 100% accuracy
+- 10 scanners, 615 tests, 546-case benchmark at 100% accuracy
 - Dual SDKs: Python + TypeScript (standalone, zero runtime deps)
 
 **Anthropic ecosystem integration:**
@@ -86,7 +86,7 @@ This complements Claude Code Security (model-based deep analysis) as the fast, d
 - PRs on claude-quickstarts, security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
 - 27+ substantive comments on Claude Code security issues
-- 601 tests, 546-case benchmark at 100% accuracy
+- 615 tests, 546-case benchmark at 100% accuracy
 - Dual SDKs: Python + TypeScript
 - Apache 2.0 licensed
 
