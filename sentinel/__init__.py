@@ -49,6 +49,7 @@ from sentinel.output_validator import OutputValidator, ValidationResult, Validat
 from sentinel.self_heal import StructuredGenerator, GenerationResult
 from sentinel.risk_router import RiskRouter, ModelTier, RouteDecision
 from sentinel.prompt_firewall import PromptFirewall, Rule as FirewallRule, Action as FirewallAction
+from sentinel.similarity_guard import SimilarityGuard, SimilarityResult
 
 __version__ = "0.17.0"
 
@@ -132,4 +133,6 @@ __all__ = [
     "PromptFirewall",
     "FirewallRule",
     "FirewallAction",
+    "SimilarityGuard",
+    "SimilarityResult",
 ]
