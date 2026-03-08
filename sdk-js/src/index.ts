@@ -1946,4 +1946,214 @@ export class SessionAudit {
   }
 }
 
+// --- Session Guard (Unified Safety Layer) ---
+
+const BLOCK_PATTERNS_GUARD = [
+  /rm\s+(-[a-zA-Z]*[rf]){1,2}\s+\/\s*$/i,
+  /rm\s+(-[a-zA-Z]*[rf]){1,2}\s+\/\*/i,
+  /mkfs\./i,
+  /:\s*\(\s*\)\s*\{/,
+  /dd\s+if=\/dev\/(zero|random)\s+of=\/dev\//i,
+  />\s*\/dev\/sd[a-z]/,
+  /chmod\s+(-R\s+)?777\s+\//i,
+  /curl\s+.*\|\s*(ba)?sh/i,
+  /wget\s+.*\|\s*(ba)?sh/i,
+];
+
+const SENSITIVE_PATHS_GUARD = [
+  '.env', '.aws/credentials', '.aws/config',
+  '.ssh/id_rsa', '.ssh/id_ed25519', '.ssh/config',
+  '.npmrc', '.pypirc', 'credentials.json',
+  '/etc/shadow', '/etc/passwd',
+  '.kube/config', '.docker/config.json',
+];
+
+export interface GuardVerdict {
+  allowed: boolean;
+  risk: AuditRiskLevel;
+  toolName: string;
+  blockReason: string;
+  warnings: string[];
+  threatMatches: string[];
+  chainsDetected: string[];
+  stage: string;
+  safe: boolean;
+}
+
+export type CustomRule = (toolName: string, args: Record<string, unknown>) => string | null;
+
+export class SessionGuard {
+  readonly audit: SessionAudit;
+  readonly chainDetector: AttackChainDetector;
+  readonly threatFeed: ThreatFeed;
+  private _blockThreshold: AuditRiskLevel;
+  private _customRules: CustomRule[];
+
+  constructor(opts?: {
+    sessionId?: string;
+    userId?: string;
+    agentId?: string;
+    model?: string;
+    blockOn?: AuditRiskLevel;
+    customRules?: CustomRule[];
+    windowSeconds?: number;
+  }) {
+    this.audit = new SessionAudit({
+      sessionId: opts?.sessionId,
+      userId: opts?.userId,
+      agentId: opts?.agentId,
+      model: opts?.model,
+    });
+    this.chainDetector = new AttackChainDetector({ windowSeconds: opts?.windowSeconds });
+    this.threatFeed = ThreatFeed.default();
+    this._blockThreshold = opts?.blockOn ?? 'critical';
+    this._customRules = opts?.customRules ?? [];
+  }
+
+  get sessionId(): string { return this.audit.sessionId; }
+  get totalChecks(): number { return this.audit.totalEntries; }
+
+  check(toolName: string, args: Record<string, unknown>): GuardVerdict {
+    const warnings: string[] = [];
+    const threatMatches: string[] = [];
+    const findings: string[] = [];
+    let risk: AuditRiskLevel = 'none';
+    let blockReason = '';
+
+    const text = this._extractText(toolName, args);
+
+    // 1. Check blocked patterns
+    for (const pat of BLOCK_PATTERNS_GUARD) {
+      if (pat.test(text)) {
+        blockReason = `destructive_command: ${pat.source}`;
+        risk = 'critical';
+        findings.push('destructive_command');
+        break;
+      }
+    }
+
+    // 2. Check sensitive files
+    if (!blockReason) {
+      for (const path of SENSITIVE_PATHS_GUARD) {
+        if (text.includes(path)) {
+          risk = this._maxRisk(risk, 'high');
+          findings.push('credential_access');
+          warnings.push(`Sensitive file access: ${path}`);
+          break;
+        }
+      }
+    }
+
+    // 3. Threat feed matching
+    if (text) {
+      const matches = this.threatFeed.match(text);
+      for (const m of matches) {
+        threatMatches.push(`[${m.indicator.severity}] ${m.indicator.technique}`);
+        risk = this._maxRisk(risk, m.indicator.severity as AuditRiskLevel);
+        findings.push(`threat:${m.indicator.id}`);
+        if (m.indicator.severity === 'critical' && !blockReason) {
+          warnings.push(`Threat: ${m.indicator.technique}`);
+        }
+      }
+    }
+
+    // 4. Chain detection
+    const chainVerdict = this.chainDetector.record(toolName, args);
+    const stage = chainVerdict.stage ?? '';
+    if (chainVerdict.alert) {
+      for (const chain of chainVerdict.chainsDetected) {
+        risk = 'critical';
+        findings.push(`chain:${chain.name}`);
+        warnings.push(`Attack chain: ${chain.description}`);
+      }
+    }
+    const chainsDetected = chainVerdict.chainsDetected.map(c => c.name);
+
+    // 5. Custom rules
+    for (const rule of this._customRules) {
+      const result = rule(toolName, args);
+      if (result) {
+        blockReason = blockReason || result;
+        risk = 'critical';
+        findings.push('custom_rule');
+      }
+    }
+
+    // 6. Block decision
+    let shouldBlock = !!blockReason || this._riskExceedsThreshold(risk);
+    if (shouldBlock && !blockReason) {
+      blockReason = `risk_threshold_exceeded: ${risk} >= ${this._blockThreshold}`;
+    }
+
+    // 7. Log
+    if (shouldBlock) {
+      this.audit.logBlocked(toolName, args, blockReason, { risk, findings });
+    } else {
+      this.audit.logToolCall(toolName, args, { risk, findings });
+    }
+
+    return {
+      allowed: !shouldBlock,
+      risk,
+      toolName,
+      blockReason,
+      warnings,
+      threatMatches,
+      chainsDetected,
+      stage,
+      safe: !shouldBlock && (risk === 'none' || risk === 'low'),
+    };
+  }
+
+  export(): AuditExport & { activeChains: Array<{ name: string; description: string; severity: string; confidence: number }> } {
+    const report = this.audit.export();
+    return {
+      ...report,
+      activeChains: this.chainDetector.activeChains().map(c => ({
+        name: c.name,
+        description: c.description,
+        severity: c.severity,
+        confidence: c.confidence,
+      })),
+    };
+  }
+
+  exportJson(indent = 2): string {
+    return JSON.stringify(this.export(), null, indent);
+  }
+
+  verifyIntegrity(): boolean {
+    return this.audit.verifyIntegrity();
+  }
+
+  private _extractText(toolName: string, args: Record<string, unknown>): string {
+    const parts: string[] = [];
+    for (const k of ['command', 'cmd']) {
+      if (typeof args[k] === 'string') parts.push(args[k] as string);
+    }
+    for (const k of ['path', 'file_path']) {
+      if (typeof args[k] === 'string') parts.push(args[k] as string);
+    }
+    for (const k of ['content', 'new_string']) {
+      if (typeof args[k] === 'string') parts.push(args[k] as string);
+    }
+    if (parts.length === 0) {
+      for (const v of Object.values(args)) {
+        if (typeof v === 'string') parts.push(v);
+      }
+    }
+    return parts.join(' ');
+  }
+
+  private _maxRisk(a: AuditRiskLevel, b: AuditRiskLevel): AuditRiskLevel {
+    const ia = AUDIT_RISK_ORDER.indexOf(a);
+    const ib = AUDIT_RISK_ORDER.indexOf(b);
+    return AUDIT_RISK_ORDER[Math.max(ia, ib)];
+  }
+
+  private _riskExceedsThreshold(risk: AuditRiskLevel): boolean {
+    return AUDIT_RISK_ORDER.indexOf(risk) >= AUDIT_RISK_ORDER.indexOf(this._blockThreshold);
+  }
+}
+
 export default SentinelGuard;
