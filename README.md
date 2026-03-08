@@ -120,7 +120,25 @@ const result = guard.scan('Ignore all previous instructions');
 console.log(result.blocked); // true
 ```
 
-Standalone scanning in Node.js, Deno, Bun, and browsers — zero runtime dependencies. See [`sdk-js/README.md`](sdk-js/README.md) for details.
+Standalone scanning in Node.js, Deno, Bun, and browsers — zero runtime dependencies. The JS SDK includes `CodeScanner` (OWASP Top 10), `DependencyScanner` (supply chain attacks), `PromptHardener`, `CanaryToken`, and all core scanners. See [`sdk-js/README.md`](sdk-js/README.md) for details.
+
+### Code Vulnerability & Supply Chain Scanning
+
+```typescript
+import { CodeScanner, DependencyScanner } from '@sentinel-ai/sdk';
+
+// Scan generated code for OWASP vulnerabilities
+const code = new CodeScanner();
+const findings = code.scan(`cursor.execute(f"SELECT * FROM users WHERE id={user_id}")`);
+// [{category: 'sql_injection', risk: 'CRITICAL', ...}]
+
+// Scan package manifests for supply chain attacks
+const deps = new DependencyScanner();
+const depFindings = deps.scan('{"dependencies":{"crossenv":"^1.0.0"}}', 'package.json');
+// [{category: 'malicious_package', risk: 'CRITICAL', ...}]
+```
+
+Use as a [Claude Code PostToolUse hook](examples/claude_code_hook.ts) to scan code as it's written — blocks Write/Edit on high/critical vulnerabilities.
 
 ## Quick Start
 
