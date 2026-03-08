@@ -54,6 +54,7 @@ from sentinel.input_sanitizer import InputSanitizer, SanitizeResult
 from sentinel.audit_log import AuditLog, AuditEvent
 from sentinel.context_manager import ContextWindowManager
 from sentinel.prompt_template import PromptTemplate, PromptLibrary
+from sentinel.guardrail_chain import GuardrailChain, Step as GuardrailStep, OnFail
 
 __version__ = "0.18.0"
 
@@ -146,4 +147,7 @@ __all__ = [
     "ContextWindowManager",
     "PromptTemplate",
     "PromptLibrary",
+    "GuardrailChain",
+    "GuardrailStep",
+    "OnFail",
 ]
