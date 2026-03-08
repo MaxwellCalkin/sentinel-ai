@@ -29,6 +29,7 @@ from sentinel.session_replay import SessionReplay, IncidentReport
 from sentinel.guard_policy import GuardPolicy
 from sentinel.claudemd_enforcer import ClaudeMdEnforcer, EnforcedRule, EnforcementVerdict
 from sentinel.evals import EvalRunner, EvalSuite, EvalCase, EvalResult, EvalReport
+from sentinel.prompt_leak import PromptLeakDetector, LeakResult
 from sentinel.anthropic_wrapper import (
     SafeAnthropic,
     SafeAsyncAnthropic,
@@ -91,6 +92,8 @@ __all__ = [
     "EvalReport",
     "ScanCache",
     "ScanMetrics",
+    "PromptLeakDetector",
+    "LeakResult",
     "SafeAnthropic",
     "SafeAsyncAnthropic",
     "SafeResponse",
