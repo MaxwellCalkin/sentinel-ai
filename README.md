@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-424%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-530%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -249,6 +249,29 @@ Add to your `claude_desktop_config.json`:
 ```
 
 Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `generate_rsp_report`.
+
+### MCP Safety Proxy
+
+Proxy any MCP server through Sentinel's safety layer. Scans all tool arguments before forwarding and auto-redacts PII in responses:
+
+```json
+{
+  "mcpServers": {
+    "safe-filesystem": {
+      "command": "sentinel",
+      "args": ["mcp-proxy", "--", "npx", "@modelcontextprotocol/server-filesystem", "/tmp"]
+    }
+  }
+}
+```
+
+```bash
+# CLI usage
+sentinel mcp-proxy -- npx @modelcontextprotocol/server-filesystem /tmp
+sentinel mcp-proxy --block-on critical -- python my_mcp_server.py
+```
+
+The proxy transparently intercepts tool calls, blocks dangerous operations (shell injection, data exfiltration), and redacts PII in tool responses — without modifying the upstream MCP server.
 
 ## Scanners
 
@@ -505,6 +528,7 @@ sentinel/
   scanners/            # 8 pluggable scanner modules
   api.py               # FastAPI REST server
   mcp_server.py        # MCP (Model Context Protocol) server
+  mcp_proxy.py         # MCP safety proxy for upstream servers
   cli.py               # Command-line interface (scan, red-team, benchmark, hook)
   hooks.py             # Claude Code PreToolUse hook integration
   streaming.py         # Token-by-token streaming guard
