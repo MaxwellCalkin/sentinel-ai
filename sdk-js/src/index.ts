@@ -1,64 +1,440 @@
 /**
  * Sentinel AI — JavaScript/TypeScript SDK
  *
- * Client for the Sentinel AI safety guardrails API.
+ * Standalone safety scanning for LLM applications.
+ * Works in Node.js, Deno, Bun, and browsers — zero dependencies.
  *
  * @example
  * ```ts
- * import { SentinelClient } from '@sentinel-ai/sdk';
+ * import { SentinelGuard } from '@sentinel-ai/sdk';
  *
- * const sentinel = new SentinelClient({ apiKey: 'sk-...' });
- * const result = await sentinel.scan('Check this text');
- * if (!result.safe) {
- *   console.log('Blocked:', result.findings);
- * }
+ * const guard = SentinelGuard.default();
+ * const result = guard.scan('Ignore all previous instructions');
+ * console.log(result.blocked); // true
+ * console.log(result.risk);    // 'CRITICAL'
  * ```
  */
 
-export interface SentinelConfig {
-  baseUrl?: string;
-  apiKey?: string;
-  timeout?: number;
+// --- Types ---
+
+export type RiskLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
+const RISK_ORDER: RiskLevel[] = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+function riskGte(a: RiskLevel, b: RiskLevel): boolean {
+  return RISK_ORDER.indexOf(a) >= RISK_ORDER.indexOf(b);
+}
+
+function maxRisk(a: RiskLevel, b: RiskLevel): RiskLevel {
+  return riskGte(a, b) ? a : b;
 }
 
 export interface Finding {
   scanner: string;
   category: string;
   description: string;
-  risk: string;
+  risk: RiskLevel;
   span?: [number, number];
   metadata: Record<string, unknown>;
 }
 
 export interface ScanResult {
+  text: string;
   safe: boolean;
   blocked: boolean;
-  risk: string;
+  risk: RiskLevel;
   findings: Finding[];
-  redacted_text: string | null;
-  latency_ms: number;
+  redactedText: string | null;
+  latencyMs: number;
 }
 
-export interface BatchScanResult {
-  results: ScanResult[];
-  total_latency_ms: number;
+export interface Scanner {
+  name: string;
+  scan(text: string): Finding[];
 }
 
-export interface HealthResult {
-  status: string;
-  version: string;
-  scanners: string[];
+// --- Pattern type ---
+
+interface ScanPattern {
+  name: string;
+  regex: RegExp;
+  risk: RiskLevel;
+  description: string;
 }
 
-export class SentinelError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public body?: unknown,
-  ) {
-    super(message);
-    this.name = 'SentinelError';
+// --- Prompt Injection Scanner ---
+
+export class PromptInjectionScanner implements Scanner {
+  name = 'prompt_injection';
+
+  private patterns: ScanPattern[] = [
+    {
+      name: 'instruction_override',
+      regex: /(ignore|disregard|forget|override|bypass|skip|neglect)\s+(all\s+|every\s+)?((previous|prior|above|earlier|system|original|your|my|safety)\s+)*(instructions?|prompts?|rules?|guidelines?|constraints?|directives?|everything(\s+you\s+were\s+told)?)/i,
+      risk: 'CRITICAL',
+      description: 'Attempt to override system instructions',
+    },
+    {
+      name: 'role_injection',
+      regex: /(you\s+are\s+now|pretend\s+(to\s+be|you\s+are)|roleplay\s+as|assume\s+the\s+role|new\s+system\s+prompt|system\s*:\s*you)\s+[\w\s]*(evil|harmful|unrestricted|without\s+(limits?|rules?|constraints?|restrictions?|ethics|filters?|safety)|no\s+(limits?|rules?|restrictions?|filters?|safety|ethics)|DAN|hacker|unfiltered|uncensored|dangerous|malicious)/i,
+      risk: 'HIGH',
+      description: 'Attempt to inject a new role or persona',
+    },
+    {
+      name: 'delimiter_injection',
+      regex: /(\[\/?(INST|SYS)\]|<\|im_start\|>|<\|im_end\|>|<<\s*SYS\s*>>|###\s*(System|Human|Assistant)\s*:)/i,
+      risk: 'CRITICAL',
+      description: 'Chat template delimiter injection',
+    },
+    {
+      name: 'prompt_leak',
+      regex: /(show(\s+me)?|reveal|display|print|output|repeat|tell\s+me)\s+(your\s+|the\s+)?(system\s+|hidden\s+|secret\s+|original\s+|internal\s+|initial\s+)(prompt|instructions?|rules?|guidelines?)/i,
+      risk: 'MEDIUM',
+      description: 'Attempt to extract system prompt',
+    },
+    {
+      name: 'jailbreak',
+      regex: /(do\s+anything\s+now|jailbreak\s+mode|enable\s+jailbreak|unlocked\s+mode|developer\s+mode|god\s+mode|unrestricted\s+mode|no\s+filter\s+mode)/i,
+      risk: 'HIGH',
+      description: 'Known jailbreak technique',
+    },
+    {
+      name: 'html_comment_injection',
+      regex: /<!--\s*(SYSTEM|ADMIN|INSTRUCTION|IMPORTANT|OVERRIDE|IGNORE|EXECUTE|PROMPT)[\s:].*?-->/i,
+      risk: 'CRITICAL',
+      description: 'Hidden instruction in HTML comment (poisoned repo attack)',
+    },
+    {
+      name: 'authority_impersonation',
+      regex: /^\s*(ADMIN\s+MESSAGE\s+FROM\s+ANTHROPIC|SYSTEM\s+(UPDATE|OVERRIDE|MESSAGE|NOTICE|ALERT)\s*:|ANTHROPIC\s+(ADMIN|SYSTEM|SECURITY)\s*(MESSAGE|NOTICE|ALERT|UPDATE)\s*:|IMPORTANT\s+SYSTEM\s+(MESSAGE|UPDATE|NOTICE)\s*:)/im,
+      risk: 'CRITICAL',
+      description: 'Authority impersonation: fake system/admin message',
+    },
+    {
+      name: 'base_url_override',
+      regex: /(ANTHROPIC_BASE_URL|OPENAI_BASE_URL)\s*=\s*https?:\/\/(?!api\.anthropic\.com|api\.openai\.com|localhost|127\.0\.0\.1)/i,
+      risk: 'CRITICAL',
+      description: 'API base URL override (credential exfiltration vector)',
+    },
+  ];
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const m = text.match(p.regex);
+      if (m) {
+        findings.push({
+          scanner: this.name,
+          category: 'prompt_injection',
+          description: p.description,
+          risk: p.risk,
+          span: m.index !== undefined ? [m.index, m.index + m[0].length] : undefined,
+          metadata: { pattern: p.name },
+        });
+      }
+    }
+    return findings;
   }
+}
+
+// --- PII Scanner ---
+
+export class PIIScanner implements Scanner {
+  name = 'pii';
+
+  private patterns: Array<ScanPattern & { piiType: string }> = [
+    { name: 'email', regex: /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b/g, risk: 'MEDIUM', description: 'Email address detected', piiType: 'EMAIL' },
+    { name: 'ssn', regex: /\b\d{3}-\d{2}-\d{4}\b/g, risk: 'CRITICAL', description: 'US Social Security Number detected', piiType: 'SSN' },
+    { name: 'credit_card', regex: /\b(\d{4}[-\s]?){3}\d{4}\b/g, risk: 'CRITICAL', description: 'Possible credit card number', piiType: 'CREDIT_CARD' },
+    { name: 'phone', regex: /\b(?:\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, risk: 'MEDIUM', description: 'Phone number detected', piiType: 'PHONE' },
+    { name: 'api_key', regex: /\b(sk-[a-zA-Z0-9]{20,}|AKIA[A-Z0-9]{16}|ghp_[a-zA-Z0-9]{36}|xox[bpras]-[a-zA-Z0-9-]+)\b/g, risk: 'CRITICAL', description: 'API key or secret token detected', piiType: 'API_KEY' },
+  ];
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const regex = new RegExp(p.regex.source, p.regex.flags);
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(text)) !== null) {
+        findings.push({
+          scanner: this.name,
+          category: 'pii',
+          description: p.description,
+          risk: p.risk,
+          span: [m.index, m.index + m[0].length],
+          metadata: { pii_type: p.piiType, pattern: p.name },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
+// --- Harmful Content Scanner ---
+
+export class HarmfulContentScanner implements Scanner {
+  name = 'harmful_content';
+
+  private patterns: ScanPattern[] = [
+    { name: 'weapons', regex: /\b(how\s+to\s+(make|build|create|manufacture|assemble|synthesize)\s+(a\s+|an\s+)?(pipe\s+)?(bomb|explosive(\s+device)?|weapon|firearm|gun|detonator|chemical\s+weapon|biological\s+weapon|nerve\s+agent|IED|sarin|ricin))\b/i, risk: 'CRITICAL', description: 'Weapons/explosives manufacturing' },
+    { name: 'drugs', regex: /\b(how\s+to\s+(make|synthesize|cook|produce|manufacture)\s+(meth|methamphetamine|fentanyl|heroin|cocaine|LSD|MDMA))\b/i, risk: 'CRITICAL', description: 'Illegal drug synthesis' },
+    { name: 'self_harm', regex: /\b(how\s+to\s+(kill\s+yourself|commit\s+suicide|end\s+(your|my)\s+life)|(methods|ways)\s+(of|to)\s+(suicide|self.?harm|killing\s+yourself))\b/i, risk: 'CRITICAL', description: 'Self-harm instructions' },
+    { name: 'hacking', regex: /\b(how\s+to\s+(hack|exploit|breach)\s+(into\s+)?(someone'?s?\s+|a\s+)?(\w+\s+)?(email|computer|server|network|database)|(write|create|generate)\s+(a\s+)?(ransomware|malware|trojan|keylogger|virus|worm|phishing\s+email))\b/i, risk: 'HIGH', description: 'Malicious hacking or malware' },
+  ];
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const m = text.match(p.regex);
+      if (m) {
+        findings.push({
+          scanner: this.name,
+          category: 'harmful_content',
+          description: p.description,
+          risk: p.risk,
+          span: m.index !== undefined ? [m.index, m.index + m[0].length] : undefined,
+          metadata: { pattern: p.name },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
+// --- Toxicity Scanner ---
+
+export class ToxicityScanner implements Scanner {
+  name = 'toxicity';
+
+  private patterns: ScanPattern[] = [
+    { name: 'threat', regex: /(i\s+will\s+(kill|hurt|destroy|end|murder|find)\s+you\b|\byou('re|\s+are)\s+(dead|finished)\b|\b(i'm\s+gonna|i'll|going\s+to)\s+(beat|attack|stab|shoot|hunt|find)\s+you\b|\bhunt\s+you\s+down\b|make\s+you\s+pay\b)/i, risk: 'CRITICAL', description: 'Threat or violent language' },
+    { name: 'severe_insult', regex: /(\byou\s+(stupid|worthless|pathetic|disgusting|useless)\b|\bkill\s+yourself\b|\bkys\b|\bgo\s+(die|fuck\s+yourself)\b)/i, risk: 'HIGH', description: 'Severe insult or derogatory language' },
+  ];
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const m = text.match(p.regex);
+      if (m) {
+        findings.push({
+          scanner: this.name,
+          category: 'toxicity',
+          description: p.description,
+          risk: p.risk,
+          span: m.index !== undefined ? [m.index, m.index + m[0].length] : undefined,
+          metadata: { pattern: p.name },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
+// --- Tool Use Scanner ---
+
+export class ToolUseScanner implements Scanner {
+  name = 'tool_use';
+
+  private patterns: ScanPattern[] = [
+    { name: 'dangerous_cmd', regex: /(rm\s+(-rf?|--recursive)\s+[\/~]|mkfs\b|dd\s+if=|curl\s+.*\|\s*(ba)?sh|wget\s+.*\|\s*(ba)?sh|eval\s*\(|DROP\s+TABLE|TRUNCATE\s+TABLE)/i, risk: 'CRITICAL', description: 'Dangerous shell command' },
+    { name: 'exfiltration', regex: /(curl\s+(-X\s+POST\s+)?https?:\/\/(?!localhost)|nc\s+\S+\s+\d+|scp\s+|rsync\s+.*@)/i, risk: 'HIGH', description: 'Potential data exfiltration' },
+    { name: 'sensitive_file', regex: /(\/etc\/passwd|\/etc\/shadow|\.ssh\/id_rsa|\.env\b|credentials\.json|\.aws\/credentials)/i, risk: 'HIGH', description: 'Sensitive file access' },
+  ];
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+    for (const p of this.patterns) {
+      const m = text.match(p.regex);
+      if (m) {
+        findings.push({
+          scanner: this.name,
+          category: 'tool_use',
+          description: p.description,
+          risk: p.risk,
+          span: m.index !== undefined ? [m.index, m.index + m[0].length] : undefined,
+          metadata: { pattern: p.name },
+        });
+      }
+    }
+    return findings;
+  }
+}
+
+// --- Obfuscation Scanner ---
+
+const LEET_MAP: Record<string, string> = {
+  '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's',
+  '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i',
+};
+
+const LEET_TARGETS = [
+  'ignore instructions', 'system prompt', 'drop table', 'delete from',
+  'eval(', 'rm -rf', 'passwd', 'hack', 'exploit', 'bypass filter', 'bypass safety',
+];
+
+const DANGEROUS_DECODED = /(ignore\s+(all\s+)?instructions|system\s+prompt|rm\s+-rf|drop\s+table|delete\s+from|exec\s*\(|eval\s*\(|subprocess|os\.system|__import__|\/etc\/passwd|\/etc\/shadow|\.ssh\/|password|secret.?key|api.?key|access.?token)/i;
+
+function decodeLeet(text: string): string {
+  return text.toLowerCase().split('').map(c => LEET_MAP[c] || c).join('');
+}
+
+function rot13(text: string): string {
+  return text.replace(/[a-zA-Z]/g, c =>
+    String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13))
+  );
+}
+
+export class ObfuscationScanner implements Scanner {
+  name = 'obfuscation';
+
+  scan(text: string): Finding[] {
+    const findings: Finding[] = [];
+
+    // ROT13 detection
+    const rot13Match = text.match(/(rot13|rot-13|rotate\s*13)\s*[:=]?\s*([A-Za-z\s]{8,})/i);
+    if (rot13Match) {
+      const decoded = rot13(rot13Match[2]);
+      if (DANGEROUS_DECODED.test(decoded)) {
+        findings.push({
+          scanner: this.name,
+          category: 'obfuscation',
+          description: `ROT13-encoded payload contains dangerous content: ${decoded.substring(0, 80)}`,
+          risk: 'HIGH',
+          span: rot13Match.index !== undefined ? [rot13Match.index, rot13Match.index + rot13Match[0].length] : undefined,
+          metadata: { encoding: 'rot13', decoded: decoded.substring(0, 200) },
+        });
+      }
+    }
+
+    // Leetspeak detection
+    const decoded = decodeLeet(text);
+    for (const target of LEET_TARGETS) {
+      if (decoded.includes(target) && !text.toLowerCase().includes(target)) {
+        const idx = decoded.indexOf(target);
+        findings.push({
+          scanner: this.name,
+          category: 'obfuscation',
+          description: `Leetspeak obfuscation detected: '${target}' hidden in text`,
+          risk: 'MEDIUM',
+          span: [idx, idx + target.length],
+          metadata: { encoding: 'leetspeak', decoded_term: target },
+        });
+        break;
+      }
+    }
+
+    // Base64 detection (Node.js only — atob/btoa or Buffer)
+    const b64Pattern = /(?<![A-Za-z0-9+/=])([A-Za-z0-9+/]{16,}={0,2})(?![A-Za-z0-9+/=])/g;
+    let b64Match: RegExpExecArray | null;
+    while ((b64Match = b64Pattern.exec(text)) !== null) {
+      try {
+        const decoded = typeof atob === 'function'
+          ? atob(b64Match[1])
+          : Buffer.from(b64Match[1], 'base64').toString('utf-8');
+        const printable = [...decoded].filter(c => c.charCodeAt(0) >= 32 && c.charCodeAt(0) < 127 || c === '\n' || c === '\t').length;
+        if (printable / decoded.length >= 0.8 && DANGEROUS_DECODED.test(decoded)) {
+          findings.push({
+            scanner: this.name,
+            category: 'obfuscation',
+            description: `Base64-encoded payload contains dangerous content: ${decoded.substring(0, 80)}`,
+            risk: 'HIGH',
+            span: [b64Match.index, b64Match.index + b64Match[0].length],
+            metadata: { encoding: 'base64', decoded: decoded.substring(0, 200) },
+          });
+        }
+      } catch { /* not valid base64 */ }
+    }
+
+    return findings;
+  }
+}
+
+// --- Main Guard ---
+
+export class SentinelGuard {
+  private scanners: Scanner[];
+  private blockThreshold: RiskLevel;
+  private redactPii: boolean;
+
+  constructor(options: {
+    scanners?: Scanner[];
+    blockThreshold?: RiskLevel;
+    redactPii?: boolean;
+  } = {}) {
+    this.scanners = options.scanners || [];
+    this.blockThreshold = options.blockThreshold || 'HIGH';
+    this.redactPii = options.redactPii !== false;
+  }
+
+  static default(): SentinelGuard {
+    return new SentinelGuard({
+      scanners: [
+        new PromptInjectionScanner(),
+        new PIIScanner(),
+        new HarmfulContentScanner(),
+        new ToxicityScanner(),
+        new ToolUseScanner(),
+        new ObfuscationScanner(),
+      ],
+    });
+  }
+
+  addScanner(scanner: Scanner): this {
+    this.scanners.push(scanner);
+    return this;
+  }
+
+  scan(text: string): ScanResult {
+    const start = performance.now();
+    const allFindings: Finding[] = [];
+
+    for (const scanner of this.scanners) {
+      const findings = scanner.scan(text);
+      allFindings.push(...findings);
+    }
+
+    let risk: RiskLevel = 'NONE';
+    for (const f of allFindings) {
+      risk = maxRisk(risk, f.risk);
+    }
+
+    const blocked = riskGte(risk, this.blockThreshold);
+
+    let redactedText: string | null = null;
+    if (this.redactPii) {
+      const piiFindings = allFindings
+        .filter(f => f.category === 'pii' && f.span)
+        .sort((a, b) => (b.span![0] - a.span![0]));
+      if (piiFindings.length > 0) {
+        redactedText = text;
+        for (const f of piiFindings) {
+          const [start, end] = f.span!;
+          const label = (f.metadata.pii_type as string) || 'REDACTED';
+          redactedText = redactedText.substring(0, start) + `[${label}]` + redactedText.substring(end);
+        }
+      }
+    }
+
+    const latencyMs = Math.round((performance.now() - start) * 100) / 100;
+
+    return {
+      text,
+      safe: !blocked && riskGte('LOW', risk),
+      blocked,
+      risk,
+      findings: allFindings,
+      redactedText,
+      latencyMs,
+    };
+  }
+}
+
+// --- API Client (for connecting to Python server) ---
+
+export interface SentinelClientConfig {
+  baseUrl?: string;
+  apiKey?: string;
+  timeout?: number;
 }
 
 export class SentinelClient {
@@ -66,23 +442,15 @@ export class SentinelClient {
   private apiKey?: string;
   private timeout: number;
 
-  constructor(config: SentinelConfig = {}) {
+  constructor(config: SentinelClientConfig = {}) {
     this.baseUrl = (config.baseUrl || 'http://localhost:8329').replace(/\/$/, '');
     this.apiKey = config.apiKey;
     this.timeout = config.timeout || 30000;
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-    if (this.apiKey) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
-    }
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (this.apiKey) headers['Authorization'] = `Bearer ${this.apiKey}`;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeout);
@@ -97,11 +465,7 @@ export class SentinelClient {
 
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null);
-        throw new SentinelError(
-          `Sentinel API error: ${response.status}`,
-          response.status,
-          errorBody,
-        );
+        throw new Error(`Sentinel API error: ${response.status} ${JSON.stringify(errorBody)}`);
       }
 
       return (await response.json()) as T;
@@ -110,23 +474,13 @@ export class SentinelClient {
     }
   }
 
-  async scan(
-    text: string,
-    options?: { context?: Record<string, unknown>; scanners?: string[] },
-  ): Promise<ScanResult> {
-    return this.request<ScanResult>('POST', '/scan', {
-      text,
-      ...options,
-    });
+  async scan(text: string): Promise<ScanResult> {
+    return this.request<ScanResult>('POST', '/scan', { text });
   }
 
-  async scanBatch(texts: string[]): Promise<BatchScanResult> {
-    return this.request<BatchScanResult>('POST', '/scan/batch', { texts });
-  }
-
-  async health(): Promise<HealthResult> {
-    return this.request<HealthResult>('GET', '/health');
+  async health(): Promise<{ status: string; version: string; scanners: string[] }> {
+    return this.request('GET', '/health');
   }
 }
 
-export default SentinelClient;
+export default SentinelGuard;
