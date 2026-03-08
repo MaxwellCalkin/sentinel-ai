@@ -319,6 +319,42 @@ def handle_tools_list(params: dict) -> dict:
                     "required": ["text"],
                 },
             },
+            {
+                "name": "compliance_check",
+                "description": (
+                    "Evaluate scan results against regulatory compliance frameworks: "
+                    "EU AI Act (2024), NIST AI RMF 1.0, and ISO/IEC 42001. Returns "
+                    "per-control compliance status, risk classification, and remediation "
+                    "recommendations for regulatory reporting."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "texts": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of texts to evaluate for compliance",
+                        },
+                        "frameworks": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": ["eu_ai_act", "nist_ai_rmf", "iso_42001"],
+                            },
+                            "description": (
+                                "Which frameworks to assess. "
+                                "Default: all three frameworks."
+                            ),
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["markdown", "json"],
+                            "description": "Output format (default: markdown)",
+                        },
+                    },
+                    "required": ["texts"],
+                },
+            },
         ],
     }
 
@@ -349,6 +385,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_harden_prompt(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
+    elif tool_name == "compliance_check":
+        return _tool_compliance_check(arguments)
     else:
         return {
             "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -685,6 +723,39 @@ def _tool_harden_prompt(args: dict) -> dict:
 
     return {
         "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
+    }
+
+
+def _tool_compliance_check(args: dict) -> dict:
+    from sentinel.compliance import ComplianceMapper, Framework
+
+    texts = args.get("texts", [])
+    fmt = args.get("format", "markdown")
+    fw_names = args.get("frameworks")
+
+    # Scan all texts
+    results = [_guard.scan(t) for t in texts]
+
+    # Map framework names
+    frameworks = None
+    if fw_names:
+        fw_map = {
+            "eu_ai_act": Framework.EU_AI_ACT,
+            "nist_ai_rmf": Framework.NIST_RMF,
+            "iso_42001": Framework.ISO_42001,
+        }
+        frameworks = [fw_map[n] for n in fw_names if n in fw_map]
+
+    mapper = ComplianceMapper()
+    report = mapper.evaluate(results, frameworks=frameworks)
+
+    if fmt == "json":
+        output = json.dumps(report.to_dict(), indent=2)
+    else:
+        output = report.to_markdown()
+
+    return {
+        "content": [{"type": "text", "text": output}],
     }
 
 
