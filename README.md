@@ -329,6 +329,24 @@ Add to your `claude_desktop_config.json`:
 
 Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `generate_rsp_report`.
 
+### FastAPI Middleware
+
+Drop-in safety scanning for any FastAPI application:
+
+```python
+from fastapi import FastAPI
+from sentinel.middleware.fastapi_middleware import create_sentinel_middleware
+
+app = FastAPI()
+app.middleware("http")(create_sentinel_middleware())
+
+@app.post("/chat")
+async def chat(request: dict):
+    # Requests with prompt injection are automatically blocked (422)
+    # Safe requests pass through normally
+    return {"response": "Hello!"}
+```
+
 ### LLM API Firewall
 
 Transparent reverse proxy that sits between your app and any LLM API, scanning all requests and responses:
