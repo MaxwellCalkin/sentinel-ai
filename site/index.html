@@ -238,6 +238,18 @@
         <p><code>sentinel audit</code> scores your project's security configuration (0-100). Checks Claude Code hooks, permissions allowlist, .env files, pre-commit hooks, and MCP config with actionable fix suggestions.</p>
       </div>
       <div class="feature-card">
+        <h3>MCP Tool Schema Validator</h3>
+        <p>Validate MCP tool definitions for injection vectors before trusting them. Detects prompt injection, authority impersonation, data exfiltration, and concealment instructions hidden in tool descriptions. <code>sentinel mcp-validate</code>.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Dependency Scanner</h3>
+        <p>Scan requirements.txt, package.json, and pyproject.toml for supply chain attacks. Detects typosquatting, known malicious packages, suspicious URLs, and dangerous install scripts. <code>sentinel dep-scan</code>.</p>
+      </div>
+      <div class="feature-card">
+        <h3>CLAUDE.md Scanner</h3>
+        <p>Scan project instruction files (CLAUDE.md, .cursorrules) for 11 categories of injection vectors: hidden HTML comments, authority impersonation, base URL override, zero-width chars, and more. <code>sentinel claudemd-scan</code>.</p>
+      </div>
+      <div class="feature-card">
         <h3>Enterprise Features</h3>
         <p>Policy engine (YAML), webhooks (Slack, PagerDuty), OpenTelemetry, API key auth, rate limiting, streaming protection, RSP-aligned risk reports.</p>
       </div>
