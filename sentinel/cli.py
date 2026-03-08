@@ -631,7 +631,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.10.0")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.11.0")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command

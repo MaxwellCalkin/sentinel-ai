@@ -24,7 +24,7 @@ from sentinel.agent_monitor import AgentMonitor
 from sentinel.threat_intel import ThreatFeed, ThreatCategory, Severity
 from sentinel.attack_chain import AttackChainDetector
 
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 __all__ = [
     "SentinelGuard",
