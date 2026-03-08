@@ -152,8 +152,10 @@ def handle_tools_list(params: dict) -> dict:
                 "name": "scan_conversation",
                 "description": (
                     "Scan a multi-turn conversation for safety issues. "
-                    "Detects gradual jailbreak escalation, topic persistence "
-                    "attacks, sandwich attacks, and re-attempts after blocks. "
+                    "Detects gradual jailbreak escalation, topic persistence, "
+                    "sandwich attacks, split injection across messages, "
+                    "context manipulation (false authority claims), and "
+                    "progressive jailbreak (DAN-style persona exploitation). "
                     "Returns per-turn and conversation-level risk assessment."
                 ),
                 "inputSchema": {
@@ -196,6 +198,50 @@ def handle_tools_list(params: dict) -> dict:
                         },
                     },
                     "required": ["text"],
+                },
+            },
+            {
+                "name": "scan_code",
+                "description": (
+                    "Scan source code for OWASP Top 10 security vulnerabilities. "
+                    "Detects SQL injection, command injection, XSS, path traversal, "
+                    "insecure deserialization, and more in generated or pasted code."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Source code to scan for vulnerabilities",
+                        },
+                        "filename": {
+                            "type": "string",
+                            "description": "Optional filename for language-specific patterns (e.g., 'app.py')",
+                        },
+                    },
+                    "required": ["code"],
+                },
+            },
+            {
+                "name": "scan_secrets",
+                "description": (
+                    "Scan code or configuration for hardcoded secrets and API keys. "
+                    "Detects 40+ patterns including AWS, GitHub, Google, Stripe, "
+                    "Slack, OpenAI, Anthropic, private keys, and connection strings."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string",
+                            "description": "Code or config text to scan for secrets",
+                        },
+                        "filename": {
+                            "type": "string",
+                            "description": "Optional filename for context",
+                        },
+                    },
+                    "required": ["code"],
                 },
             },
             {
@@ -243,6 +289,10 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_scan_conversation(arguments)
     elif tool_name == "test_robustness":
         return _tool_test_robustness(arguments)
+    elif tool_name == "scan_code":
+        return _tool_scan_code(arguments)
+    elif tool_name == "scan_secrets":
+        return _tool_scan_secrets(arguments)
     elif tool_name == "generate_rsp_report":
         return _tool_generate_rsp_report(arguments)
     else:
@@ -410,6 +460,71 @@ def _tool_get_risk_report(args: dict) -> dict:
     }
 
 
+def _tool_scan_code(args: dict) -> dict:
+    from sentinel.scanners.code_scanner import CodeScanner
+
+    code = args.get("code", "")
+    filename = args.get("filename")
+
+    scanner = CodeScanner()
+    findings = scanner.scan(code, filename=filename)
+
+    output = {
+        "safe": len(findings) == 0,
+        "findings_count": len(findings),
+        "findings": [
+            {
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.metadata.get("line"),
+            }
+            for f in findings
+        ],
+    }
+
+    if findings:
+        max_risk = max(f.risk for f in findings)
+        output["max_risk"] = max_risk.value
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
+    }
+
+
+def _tool_scan_secrets(args: dict) -> dict:
+    from sentinel.scanners.secrets_scanner import SecretsScanner
+
+    code = args.get("code", "")
+    filename = args.get("filename")
+
+    scanner = SecretsScanner()
+    findings = scanner.scan(code, filename=filename)
+
+    output = {
+        "safe": len(findings) == 0,
+        "findings_count": len(findings),
+        "findings": [
+            {
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.metadata.get("line"),
+                "provider": f.metadata.get("provider", "unknown"),
+            }
+            for f in findings
+        ],
+    }
+
+    if findings:
+        max_risk = max(f.risk for f in findings)
+        output["max_risk"] = max_risk.value
+
+    return {
+        "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
+    }
+
+
 def _tool_generate_rsp_report(args: dict) -> dict:
     from sentinel.rsp_report import RiskReportGenerator
 
@@ -474,7 +589,18 @@ def _tool_scan_conversation(args: dict) -> dict:
             "findings_count": len(result.scan.findings),
         })
 
+    # Run cross-turn attack detection
+    cross_turn_findings = conv.full_scan()
     summary = conv.summarize()
+
+    cross_turn = []
+    for f in cross_turn_findings:
+        cross_turn.append({
+            "category": f.category,
+            "description": f.description,
+            "risk": f.risk.value,
+        })
+
     output = {
         "conversation_risk": summary.conversation_risk.value,
         "total_turns": summary.total_turns,
@@ -482,6 +608,7 @@ def _tool_scan_conversation(args: dict) -> dict:
         "escalations": summary.escalations,
         "category_counts": summary.category_counts,
         "flags": summary.flags,
+        "cross_turn_attacks": cross_turn,
         "turns": turns,
     }
 
