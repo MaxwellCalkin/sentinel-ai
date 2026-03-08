@@ -304,6 +304,14 @@
         <p>Detect multi-step attack sequences across tool calls. No single action is dangerous, but the sequence reveals malicious intent: recon → credential access → exfiltration, escalation → destruction, and more.</p>
       </div>
       <div class="feature-card">
+        <h3>Session Guard</h3>
+        <p>One-line safety for agentic AI. Combines audit logging, attack chain detection, and threat intelligence into a single guard.check() call. Configurable block threshold, custom rules, and SIEM-ready JSON export.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Session Audit Trail</h3>
+        <p>Tamper-evident logging with SHA-256 hash chaining. Every tool call, blocked action, and anomaly is recorded. Export to JSON for Splunk, Datadog, Elastic. SOC 2 and ISO 27001 compliance ready.</p>
+      </div>
+      <div class="feature-card">
         <h3>Enterprise Features</h3>
         <p>Policy engine (YAML), webhooks (Slack, PagerDuty), OpenTelemetry, API key auth, rate limiting, streaming protection, RSP-aligned risk reports.</p>
       </div>
@@ -356,6 +364,11 @@
       <a href="blog/threat-intelligence.html" class="feature-card" style="text-decoration:none;cursor:pointer;">
         <h3 style="color:var(--yellow, #eab308);">Building a Threat Intelligence Feed for LLM Attacks</h3>
         <p>A MITRE ATLAS-aligned database of 27+ known attack techniques. Query by category, match text against patterns, and integrate with your safety pipeline.</p>
+        <p style="color:var(--accent2);margin-top:8px;">Read article &rarr;</p>
+      </a>
+      <a href="blog/session-guard.html" class="feature-card" style="text-decoration:none;cursor:pointer;">
+        <h3 style="color:var(--yellow, #eab308);">One-Line Safety for Agentic AI: Introducing SessionGuard</h3>
+        <p>Drop-in safety layer combining audit logging, attack chain detection, and threat intelligence. One guard.check() call gives you real-time protection and SIEM export.</p>
         <p style="color:var(--accent2);margin-top:8px;">Read article &rarr;</p>
       </a>
     </div>
