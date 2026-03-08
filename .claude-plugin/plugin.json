@@ -1,8 +1,8 @@
 {
   "name": "sentinel-ai",
   "displayName": "Sentinel AI - Safety Guardrails",
-  "version": "0.5.0",
-  "description": "Real-time safety scanning for LLM interactions. Detects prompt injection, PII leaks, harmful content, hallucinations, toxicity, and dangerous tool calls — with sub-millisecond latency.",
+  "version": "0.15.0",
+  "description": "Real-time safety scanning for LLM interactions. Detects prompt injection, PII leaks, harmful content, toxicity, obfuscation, secrets, and dangerous tool calls — 600-case benchmark at 100% accuracy with sub-millisecond latency.",
   "author": {
     "name": "Maxwell Calkin",
     "url": "https://github.com/MaxwellCalkin"
@@ -16,7 +16,11 @@
     "security",
     "prompt-injection",
     "pii",
-    "scanning"
+    "scanning",
+    "secrets",
+    "toxicity",
+    "harmful-content",
+    "obfuscation"
   ],
   "categories": [
     "security",
@@ -24,5 +28,29 @@
   ],
   "requirements": {
     "python": ">=3.10"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-scan.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Read|Grep|WebFetch|WebSearch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/post-tool-scan.sh"
+          }
+        ]
+      }
+    ]
   }
 }
