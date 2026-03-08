@@ -162,11 +162,51 @@ def init_policy(project_dir: Path) -> list[str]:
     return actions
 
 
+_PRE_COMMIT_SCRIPT = """\
+#!/bin/sh
+# Sentinel AI pre-commit hook — scans staged code for OWASP vulnerabilities
+# Remove this file or run `git config core.hooksPath ""` to disable
+exec sentinel pre-commit
+"""
+
+
+def init_pre_commit(project_dir: Path) -> list[str]:
+    """Install a git pre-commit hook that scans staged code."""
+    actions = []
+    git_dir = project_dir / ".git"
+    if not git_dir.is_dir():
+        actions.append("Pre-commit hook: not a git repo (skipped)")
+        return actions
+
+    hooks_dir = git_dir / "hooks"
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    hook_path = hooks_dir / "pre-commit"
+
+    if hook_path.exists():
+        content = hook_path.read_text(encoding="utf-8")
+        if "sentinel" in content:
+            actions.append("Pre-commit hook: already configured (skipped)")
+            return actions
+        # Don't overwrite existing hooks
+        actions.append("Pre-commit hook: existing hook found (skipped, add 'sentinel pre-commit' manually)")
+        return actions
+
+    hook_path.write_text(_PRE_COMMIT_SCRIPT, encoding="utf-8")
+    # Make executable on Unix
+    try:
+        hook_path.chmod(0o755)
+    except OSError:
+        pass
+    actions.append(f"Pre-commit hook: installed in {hook_path}")
+    return actions
+
+
 def run_init(
     project_dir: Path | None = None,
     hooks: bool = True,
     mcp: bool = True,
     policy: bool = True,
+    pre_commit: bool = True,
 ) -> list[str]:
     """Run full initialization. Returns list of actions taken."""
     if project_dir is None:
@@ -180,5 +220,7 @@ def run_init(
         actions.extend(init_mcp(project_dir))
     if policy:
         actions.extend(init_policy(project_dir))
+    if pre_commit:
+        actions.extend(init_pre_commit(project_dir))
 
     return actions

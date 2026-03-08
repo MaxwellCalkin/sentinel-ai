@@ -233,6 +233,67 @@ def cmd_code_scan(args: argparse.Namespace) -> int:
     return 1 if any(f.risk >= RiskLevel.HIGH for f in findings) else 0
 
 
+def cmd_pre_commit(args: argparse.Namespace) -> int:
+    """Scan git staged files for code vulnerabilities."""
+    import subprocess
+
+    from sentinel.scanners.code_scanner import CodeScanner
+    from sentinel.core import RiskLevel
+
+    scannable_exts = {".py", ".js", ".ts", ".jsx", ".tsx", ".rb", ".php", ".java", ".go", ".rs"}
+
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
+            capture_output=True, text=True, check=True,
+        )
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("Error: not a git repository or git not found", file=sys.stderr)
+        return 1
+
+    staged_files = [f.strip() for f in result.stdout.strip().splitlines() if f.strip()]
+    if not staged_files:
+        return 0
+
+    code_files = [f for f in staged_files if Path(f).suffix in scannable_exts]
+    if not code_files:
+        return 0
+
+    scanner = CodeScanner()
+    threshold = RiskLevel[args.block_on.upper()]
+    all_findings = []
+    blocked = False
+
+    for filepath in code_files:
+        try:
+            code = Path(filepath).read_text(encoding="utf-8")
+        except (FileNotFoundError, UnicodeDecodeError):
+            continue
+
+        findings = scanner.scan(code, filename=filepath)
+        if not findings:
+            continue
+
+        all_findings.extend(findings)
+        high_findings = [f for f in findings if f.risk >= threshold]
+        if high_findings:
+            blocked = True
+            print(f"\n{filepath}:")
+            for f in high_findings:
+                line = f.metadata.get("line", "?")
+                print(f"  L{line} [{f.risk.value.upper()}] {f.description}")
+
+    if blocked:
+        print(f"\nSentinel AI: blocked commit — {len(all_findings)} vulnerability(ies) found")
+        print("Fix the issues above or use --no-verify to bypass (not recommended)")
+        return 1
+
+    if all_findings and not args.quiet:
+        print(f"Sentinel AI: {len(all_findings)} low-risk finding(s) in staged files (allowed)")
+
+    return 0
+
+
 def cmd_mcp_proxy(args: argparse.Namespace) -> int:
     from sentinel.mcp_proxy import run_proxy
     from sentinel.core import RiskLevel
@@ -364,6 +425,21 @@ def main(argv: list[str] | None = None) -> int:
         "hook", help="Run as a Claude Code PreToolUse hook (reads event from stdin)"
     )
 
+    # pre-commit command
+    pc_parser = subparsers.add_parser(
+        "pre-commit", help="Scan git staged files for code vulnerabilities (use as git pre-commit hook)"
+    )
+    pc_parser.add_argument(
+        "--block-on",
+        choices=["low", "medium", "high", "critical"],
+        default="high",
+        help="Minimum risk level to block commit (default: high)",
+    )
+    pc_parser.add_argument(
+        "--quiet", "-q", action="store_true",
+        help="Suppress output for allowed findings",
+    )
+
     # mcp-proxy command
     proxy_parser = subparsers.add_parser(
         "mcp-proxy", help="Run as a safety proxy for any MCP server"
@@ -428,6 +504,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_init(args)
     elif args.command == "hook":
         return cmd_hook(args)
+    elif args.command == "pre-commit":
+        return cmd_pre_commit(args)
     elif args.command == "code-scan":
         return cmd_code_scan(args)
     elif args.command == "mcp-proxy":

@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-558%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-570%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -285,7 +285,8 @@ sentinel scan --file document.txt
 sentinel red-team "Ignore all previous instructions"
 sentinel benchmark
 sentinel code-scan --file app.py   # Scan code for OWASP vulnerabilities
-sentinel init     # Set up Claude Code hooks, MCP config, and policy
+sentinel pre-commit                # Scan git staged files (git hook)
+sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
 ### Claude Code Hooks
@@ -342,6 +343,20 @@ sentinel proxy --target https://api.openai.com --port 8330
 ```
 
 The firewall scans input messages for injection/harmful content, scans output for PII/dangerous content, blocks dangerous tool calls, auto-redacts PII in responses, and adds `X-Sentinel-*` headers with scan metadata. Stats available at `/_sentinel/stats`.
+
+### Git Pre-Commit Hook
+
+Automatically scan staged code for OWASP vulnerabilities before each commit:
+
+```bash
+sentinel init    # Installs pre-commit hook + Claude Code hooks + MCP server
+
+# Or install manually:
+sentinel pre-commit              # Scan staged files (use in .git/hooks/pre-commit)
+sentinel pre-commit --block-on critical  # Only block critical findings
+```
+
+The pre-commit hook scans `.py`, `.js`, `.ts`, `.jsx`, `.tsx`, `.rb`, `.php`, `.java`, `.go`, `.rs` files for SQL injection, command injection, XSS, hardcoded secrets, and other OWASP vulnerabilities.
 
 ### MCP Safety Proxy
 

@@ -87,19 +87,19 @@ class TestInitPolicy:
 
 class TestRunInit:
     def test_full_init(self, tmp_project):
-        actions = run_init(project_dir=tmp_project)
+        actions = run_init(project_dir=tmp_project, pre_commit=False)
         assert len(actions) == 3
         assert (tmp_project / ".claude" / "settings.json").exists()
         assert (tmp_project / "sentinel-policy.yaml").exists()
 
     def test_skip_hooks(self, tmp_project):
-        actions = run_init(project_dir=tmp_project, hooks=False)
+        actions = run_init(project_dir=tmp_project, hooks=False, pre_commit=False)
         assert not (tmp_project / ".claude" / "settings.json").exists()
         assert len(actions) == 2
 
     def test_skip_all(self, tmp_project):
         actions = run_init(
-            project_dir=tmp_project, hooks=False, mcp=False, policy=False
+            project_dir=tmp_project, hooks=False, mcp=False, policy=False, pre_commit=False
         )
         assert len(actions) == 0
 
