@@ -1,0 +1,12 @@
+# Sentinel AI — Quick Start (copy to .github/workflows/security.yml)
+# One-step comprehensive security scan: dependencies, secrets, CLAUDE.md, code, MCP schemas
+name: Security
+on: [pull_request, push]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          project-scan: "true"

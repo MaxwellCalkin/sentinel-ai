@@ -1,5 +1,5 @@
-# Sentinel AI — Full Security Pipeline
-# Add this to .github/workflows/security.yml for comprehensive CI/CD safety scanning
+# Sentinel AI — Security Pipeline Examples
+# Add to .github/workflows/security.yml
 
 name: Security Scan
 on:
@@ -12,8 +12,23 @@ permissions:
   contents: read
 
 jobs:
-  sentinel-scan:
+  # Option A: One-command comprehensive scan (recommended)
+  # Runs ALL scanners in one step: dependencies, CLAUDE.md, secrets, code, MCP schemas, audit
+  quick-scan:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sentinel AI Project Scan
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          project-scan: "true"
+          block-on: high
+
+  # Option B: Individual scans with fine-grained control
+  # Use this when you need different thresholds or want to scan specific files
+  detailed-scan:
+    runs-on: ubuntu-latest
+    if: false  # Enable by removing this line
     steps:
       - uses: actions/checkout@v4
 
@@ -31,18 +46,18 @@ jobs:
           claudemd-scan: "true"
           block-on: high
 
-      # 3. Audit project security configuration
-      - name: Security Audit
-        uses: MaxwellCalkin/sentinel-ai@main
-        with:
-          audit: "true"
-
-      # 4. Scan for hardcoded secrets & API keys
+      # 3. Scan for hardcoded secrets & API keys
       - name: Secrets Scan
         uses: MaxwellCalkin/sentinel-ai@main
         with:
           secrets-scan: "true"
           block-on: critical
+
+      # 4. Audit project security configuration
+      - name: Security Audit
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          audit: "true"
 
       # 5. Scan source code for OWASP vulnerabilities + upload to Security tab
       - name: Code Vulnerability Scan

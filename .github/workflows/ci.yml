@@ -44,6 +44,32 @@ jobs:
           assert result.false_negatives == 0, f'False negatives: {result.false_negatives}'
           "
 
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Sentinel AI
+        run: pip install -e .
+
+      - name: Run project security scan
+        run: |
+          sentinel project-scan --format json | python3 -c "
+          import sys, json
+          report = json.load(sys.stdin)
+          print(f'Security Score: {report[\"score\"]}/100')
+          print(f'Risk: {report[\"risk\"]}')
+          print(f'Total Findings: {report[\"total_findings\"]}')
+          for section, findings in report['sections'].items():
+              if findings:
+                  print(f'  [{section}] {len(findings)} finding(s)')
+          "
+
   test-js:
     runs-on: ubuntu-latest
     steps:

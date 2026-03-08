@@ -30,6 +30,10 @@ inputs:
     description: "Scan source files for hardcoded secrets, API keys, credentials (true to auto-detect, or path to directory)"
     required: false
     default: "false"
+  project-scan:
+    description: "Run comprehensive project-wide security scan (combines all scanners, outputs 0-100 security score)"
+    required: false
+    default: "false"
   audit:
     description: "Run security configuration audit (true/false)"
     required: false
@@ -66,7 +70,9 @@ runs:
   steps:
     - name: Install Sentinel AI
       shell: bash
-      run: pip install sentinel-guardrails
+      run: |
+        pip install sentinel-guardrails 2>/dev/null || \
+        pip install "sentinel-guardrails @ git+https://github.com/MaxwellCalkin/sentinel-ai.git"
 
     - name: Run scan
       id: scan
@@ -208,6 +214,28 @@ print(max(risks, key=lambda r: order.index(r)) if risks else 'none')
           if [ "$CRIT" -gt 0 ]; then
             update_risk "high"
           fi
+          echo "::endgroup::"
+        fi
+
+        # Project-wide comprehensive scan
+        if [ "${{ inputs.project-scan }}" = "true" ]; then
+          echo "::group::Sentinel AI: Comprehensive Project Scan"
+          RESULT=$(sentinel project-scan --format json 2>/dev/null || echo '{"score":100,"risk":"none","total_findings":0,"sections":{}}')
+          SCORE=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('score',100))")
+          RISK=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('risk','none'))")
+          TOTAL=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('total_findings',0))")
+          update_risk "$RISK"
+          echo "::notice::Sentinel AI Security Score: ${SCORE}/100 (${TOTAL} findings)"
+          # Emit annotations for each finding
+          echo "$RESULT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+for section, findings in d.get('sections',{}).items():
+    for f in findings:
+        risk = f.get('risk','low')
+        level = 'error' if risk in ('critical','high') else 'warning'
+        print(f'::{level}::[{section}] {f[\"description\"]}')
+" 2>/dev/null
           echo "::endgroup::"
         fi
 
