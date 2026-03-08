@@ -38,6 +38,11 @@ from sentinel.anthropic_wrapper import (
     InputBlockedError,
     OutputBlockedError,
 )
+from sentinel.openai_wrapper import (
+    SafeOpenAI,
+    SafeAsyncOpenAI,
+    SafeChatResponse,
+)
 
 __version__ = "0.17.0"
 
@@ -100,4 +105,7 @@ __all__ = [
     "SafetyError",
     "InputBlockedError",
     "OutputBlockedError",
+    "SafeOpenAI",
+    "SafeAsyncOpenAI",
+    "SafeChatResponse",
 ]
