@@ -26,6 +26,10 @@ inputs:
   mcp-validate:
     description: "Path to JSON file containing MCP tool definitions to validate"
     required: false
+  secrets-scan:
+    description: "Scan source files for hardcoded secrets, API keys, credentials (true to auto-detect, or path to directory)"
+    required: false
+    default: "false"
   audit:
     description: "Run security configuration audit (true/false)"
     required: false
@@ -172,6 +176,26 @@ else:
           RISK=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('risk','none'))")
           update_risk "$RISK"
           echo "$RESULT" | python3 -c "import sys,json; [print(f\"::warning ::{f['description']} (tool: {f.get('tool','')})\") for f in json.load(sys.stdin).get('findings',[])]" 2>/dev/null
+          echo "::endgroup::"
+        fi
+
+        # Secrets scan
+        if [ "${{ inputs.secrets-scan }}" != "false" ]; then
+          echo "::group::Sentinel AI: Secrets Scan"
+          if [ "${{ inputs.secrets-scan }}" = "true" ]; then
+            RESULT=$(sentinel secrets-scan --format json 2>/dev/null || echo "[]")
+          else
+            RESULT=$(sentinel secrets-scan --dir "${{ inputs.secrets-scan }}" --format json 2>/dev/null || echo "[]")
+          fi
+          RISK=$(echo "$RESULT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+risks = [f['risk'] for f in d]
+order = ['none','low','medium','high','critical']
+print(max(risks, key=lambda r: order.index(r)) if risks else 'none')
+" 2>/dev/null || echo "none")
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; [print(f\"::error file={f.get('file','')},line={f.get('line',1)}::{f['description']}\") for f in json.load(sys.stdin)]" 2>/dev/null
           echo "::endgroup::"
         fi
 

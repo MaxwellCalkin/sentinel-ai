@@ -16,8 +16,9 @@ from sentinel.conversation import ConversationGuard
 from sentinel.adversarial import AdversarialTester
 from sentinel.scanners.code_scanner import CodeScanner
 from sentinel.scanners.obfuscation import ObfuscationScanner
+from sentinel.scanners.secrets_scanner import SecretsScanner
 
-__version__ = "0.8.3"
+__version__ = "0.8.4"
 
 __all__ = [
     "SentinelGuard",
@@ -31,6 +32,7 @@ __all__ = [
     "BlockedTermsScanner",
     "ToolUseScanner",
     "CodeScanner",
+    "SecretsScanner",
     "Policy",
     "StreamingGuard",
     "RiskReportGenerator",

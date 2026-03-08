@@ -531,6 +531,57 @@ def cmd_dep_scan(args: argparse.Namespace) -> int:
     return 1 if has_critical else 0
 
 
+def cmd_secrets_scan(args: argparse.Namespace) -> int:
+    """Scan source files for hardcoded secrets, API keys, and credentials."""
+    from sentinel.scanners.secrets_scanner import SecretsScanner
+    from sentinel.core import RiskLevel
+
+    scanner = SecretsScanner()
+
+    if args.file:
+        findings = scanner.scan_file(Path(args.file))
+    else:
+        project_dir = Path(args.dir) if args.dir else Path.cwd()
+        findings = scanner.scan_directory(
+            project_dir,
+            max_files=args.max_files,
+            recursive=not args.no_recursive,
+        )
+
+    if args.format == "json":
+        print(json.dumps([
+            {
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.metadata.get("line"),
+                "file": f.metadata.get("filename", ""),
+                "match": f.metadata.get("match", ""),
+            }
+            for f in findings
+        ], indent=2))
+    else:
+        if not findings:
+            print("No hardcoded secrets found.")
+        else:
+            current_file = None
+            for f in findings:
+                fname = f.metadata.get("filename", "unknown")
+                if fname != current_file:
+                    print(f"\n{fname}:")
+                    current_file = fname
+                line = f.metadata.get("line", "?")
+                print(f"  L{line} [{f.risk.value.upper()}] {f.description.split(': ', 1)[-1]}")
+                if f.metadata.get("match"):
+                    print(f"       Match: {f.metadata['match']}")
+
+            critical = sum(1 for f in findings if f.risk >= RiskLevel.CRITICAL)
+            print(f"\n{len(findings)} secret(s) found, {critical} critical")
+
+    has_critical = any(f.risk >= RiskLevel.CRITICAL for f in findings)
+    return 1 if has_critical else 0
+
+
 def cmd_project_scan(args: argparse.Namespace) -> int:
     """Run comprehensive security scan on entire project."""
     from sentinel.project_scanner import scan_project
@@ -563,7 +614,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.3")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.4")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -733,6 +784,18 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # secrets-scan command
+    ss_parser = subparsers.add_parser(
+        "secrets-scan", help="Scan source files for hardcoded secrets, API keys, and credentials"
+    )
+    ss_parser.add_argument("--file", "-f", help="Single file to scan")
+    ss_parser.add_argument("--dir", "-d", help="Project directory to scan (default: current directory)")
+    ss_parser.add_argument("--max-files", type=int, default=100, help="Maximum files to scan (default: 100)")
+    ss_parser.add_argument("--no-recursive", action="store_true", help="Do not scan subdirectories")
+    ss_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # project-scan command
     ps_parser = subparsers.add_parser(
         "project-scan", help="Comprehensive security scan of entire project"
@@ -778,6 +841,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_audit(args)
     elif args.command == "dep-scan":
         return cmd_dep_scan(args)
+    elif args.command == "secrets-scan":
+        return cmd_secrets_scan(args)
     elif args.command == "project-scan":
         return cmd_project_scan(args)
     elif args.command == "serve":

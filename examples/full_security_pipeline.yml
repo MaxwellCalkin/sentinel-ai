@@ -37,7 +37,14 @@ jobs:
         with:
           audit: "true"
 
-      # 4. Scan source code for OWASP vulnerabilities + upload to Security tab
+      # 4. Scan for hardcoded secrets & API keys
+      - name: Secrets Scan
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          secrets-scan: "true"
+          block-on: critical
+
+      # 5. Scan source code for OWASP vulnerabilities + upload to Security tab
       - name: Code Vulnerability Scan
         uses: MaxwellCalkin/sentinel-ai@main
         with:

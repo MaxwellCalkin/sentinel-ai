@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-727%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-809%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -450,6 +450,26 @@ Detects:
 - **Version pinning issues** — unpinned, wildcard, or loosely bounded versions
 
 Supports: `requirements.txt`, `package.json`, `pyproject.toml`, `Pipfile`
+
+### Secrets Scanner
+
+Scan source code for hardcoded credentials, API keys, tokens, and private keys:
+
+```bash
+sentinel secrets-scan                  # Scan current project
+sentinel secrets-scan --file config.py # Scan specific file
+sentinel secrets-scan --format json    # JSON output for CI/CD
+```
+
+Detects 40+ secret patterns:
+- **Cloud providers** — AWS access keys, Azure storage keys, Google API keys, Firebase
+- **Code platforms** — GitHub tokens (ghp_, gho_, ghs_, github_pat_), npm, PyPI tokens
+- **Payment/SaaS** — Stripe, Twilio, SendGrid, Slack, Mailgun, Heroku API keys
+- **AI providers** — OpenAI, Anthropic API keys
+- **Private keys** — RSA, EC, PGP, OpenSSH private keys
+- **Generic secrets** — passwords, API keys, bearer tokens, connection strings
+- **Entropy analysis** — reduces false positives by filtering low-entropy values
+- **Smart filtering** — skips comments, placeholders, env var references, lock files
 
 ### MCP Safety Proxy
 

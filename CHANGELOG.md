@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.4] - 2026-03-08
+
+### Added
+- **Secrets Scanner** — `sentinel secrets-scan` detects hardcoded credentials in source code
+  - 40+ patterns: AWS, GitHub, Google, Stripe, Slack, OpenAI, Anthropic, Twilio, SendGrid, npm, PyPI, Azure, Firebase, Supabase, Mailgun
+  - Private key detection (RSA, EC, PGP, OpenSSH)
+  - Generic secret patterns (passwords, API keys, tokens, bearer tokens)
+  - Database connection strings with embedded credentials
+  - Shannon entropy analysis to reduce false positives
+  - False positive filtering (placeholders, env vars, templates)
+  - Comment-aware scanning
+  - Directory scanning with file type filtering
+  - Integrated into `sentinel project-scan` and GitHub Action
+  - 66 new tests
+- GitHub Action: new `secrets-scan` input for CI/CD secret detection
+- Test count: 743 → 809
+
 ## [0.8.3] - 2026-03-08
 
 ### Added

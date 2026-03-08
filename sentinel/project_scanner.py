@@ -222,7 +222,16 @@ def scan_project(project_dir: Path | None = None) -> ProjectScanReport:
     except Exception:
         report.sections["Source Code (OWASP)"] = []
 
-    # 5. MCP tool schema validation (check for mcp config files)
+    # 5. Secrets scanning (hardcoded API keys, tokens, credentials)
+    try:
+        from sentinel.scanners.secrets_scanner import SecretsScanner
+        secrets_scanner = SecretsScanner()
+        secrets_findings = secrets_scanner.scan_directory(project_dir, max_files=30)
+        report.sections["Hardcoded Secrets"] = secrets_findings
+    except Exception:
+        report.sections["Hardcoded Secrets"] = []
+
+    # 6. MCP tool schema validation (check for mcp config files)
     try:
         from sentinel.mcp_schema_validator import validate_mcp_tools
         mcp_findings = []
