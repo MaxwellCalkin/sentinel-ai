@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "sentinel-ai",
   "display_name": "Sentinel AI Safety Guardrails",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Real-time safety scanning for LLM applications. Detects prompt injection, PII leaks, harmful content, toxicity, obfuscation, hardcoded secrets, and dangerous tool calls with sub-millisecond latency and 100% accuracy on a 600-case benchmark.",
   "author": {
     "name": "Maxwell Calkin",

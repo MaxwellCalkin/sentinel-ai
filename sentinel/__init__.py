@@ -29,8 +29,16 @@ from sentinel.session_replay import SessionReplay, IncidentReport
 from sentinel.guard_policy import GuardPolicy
 from sentinel.claudemd_enforcer import ClaudeMdEnforcer, EnforcedRule, EnforcementVerdict
 from sentinel.evals import EvalRunner, EvalSuite, EvalCase, EvalResult, EvalReport
+from sentinel.anthropic_wrapper import (
+    SafeAnthropic,
+    SafeAsyncAnthropic,
+    SafeResponse,
+    SafetyError,
+    InputBlockedError,
+    OutputBlockedError,
+)
 
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 
 __all__ = [
     "SentinelGuard",
@@ -83,4 +91,10 @@ __all__ = [
     "EvalReport",
     "ScanCache",
     "ScanMetrics",
+    "SafeAnthropic",
+    "SafeAsyncAnthropic",
+    "SafeResponse",
+    "SafetyError",
+    "InputBlockedError",
+    "OutputBlockedError",
 ]
