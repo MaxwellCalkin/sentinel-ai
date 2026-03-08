@@ -30,7 +30,7 @@ from sentinel.guard_policy import GuardPolicy
 from sentinel.claudemd_enforcer import ClaudeMdEnforcer, EnforcedRule, EnforcementVerdict
 from sentinel.evals import EvalRunner, EvalSuite, EvalCase, EvalResult, EvalReport
 
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 __all__ = [
     "SentinelGuard",
