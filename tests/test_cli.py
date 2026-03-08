@@ -200,3 +200,59 @@ def test_cli_replay_file(capsys, tmp_path):
 def test_cli_replay_no_input(capsys):
     code = main(["replay"])
     assert code == 1
+
+
+# --- sentinel enforce CLI tests ---
+
+
+def test_cli_enforce_show_rules(capsys, tmp_path):
+    md = tmp_path / "CLAUDE.md"
+    md.write_text("- Never use `rm -rf`\n- Do not access `.env`\n")
+    code = main(["enforce", "--file", str(md), "--show-rules"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "enforceable rule" in out
+    assert "rm -rf" in out
+
+
+def test_cli_enforce_check_blocked(capsys, tmp_path):
+    md = tmp_path / "CLAUDE.md"
+    md.write_text("- Never use `rm -rf`\n")
+    code = main(["enforce", "--file", str(md), "--tool", "bash", "--command", "rm -rf /tmp"])
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "BLOCKED" in out
+
+
+def test_cli_enforce_check_allowed(capsys, tmp_path):
+    md = tmp_path / "CLAUDE.md"
+    md.write_text("- Never use `rm -rf`\n")
+    code = main(["enforce", "--file", str(md), "--tool", "bash", "--command", "ls -la"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "ALLOWED" in out
+
+
+def test_cli_enforce_export_policy(capsys, tmp_path):
+    md = tmp_path / "CLAUDE.md"
+    md.write_text("- Never use `rm -rf`\n- Do not access `.env`\n")
+    code = main(["enforce", "--file", str(md), "--export-policy"])
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "blocked_commands" in out
+    assert "rm -rf" in out
+
+
+def test_cli_enforce_export_policy_json(capsys, tmp_path):
+    md = tmp_path / "CLAUDE.md"
+    md.write_text("- Never use `rm -rf`\n")
+    code = main(["enforce", "--file", str(md), "--export-policy", "--format", "json"])
+    out = capsys.readouterr().out
+    data = json.loads(out)
+    assert "blocked_commands" in data
+    assert "rm -rf" in data["blocked_commands"]
+
+
+def test_cli_enforce_missing_file(capsys):
+    code = main(["enforce", "--file", "nonexistent_CLAUDE.md"])
+    assert code == 1

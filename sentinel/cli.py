@@ -791,6 +791,79 @@ def cmd_replay(args: argparse.Namespace) -> int:
     return 1 if has_critical else 0
 
 
+def cmd_enforce(args: argparse.Namespace) -> int:
+    """Extract and enforce CLAUDE.md rules."""
+    from sentinel.claudemd_enforcer import ClaudeMdEnforcer
+
+    md_path = args.file or "CLAUDE.md"
+    try:
+        enforcer = ClaudeMdEnforcer.from_file(md_path)
+    except FileNotFoundError:
+        print(f"Error: {md_path} not found", file=sys.stderr)
+        return 1
+
+    if args.show_rules:
+        print(enforcer.summary())
+        return 0
+
+    if args.export_policy:
+        policy_dict = enforcer.to_guard_policy_dict()
+        if args.format == "json":
+            print(json.dumps(policy_dict, indent=2))
+        else:
+            # YAML-like output
+            print("# Generated from", md_path)
+            print(f"block_on: {policy_dict['block_on']}")
+            if policy_dict["blocked_commands"]:
+                print("blocked_commands:")
+                for cmd in policy_dict["blocked_commands"]:
+                    print(f"  - \"{cmd}\"")
+            if policy_dict["sensitive_paths"]:
+                print("sensitive_paths:")
+                for p in policy_dict["sensitive_paths"]:
+                    print(f"  - \"{p}\"")
+            if policy_dict["denied_tools"]:
+                print("denied_tools:")
+                for t in policy_dict["denied_tools"]:
+                    print(f"  - \"{t}\"")
+            if policy_dict["custom_blocks"]:
+                print("custom_blocks:")
+                for cb in policy_dict["custom_blocks"]:
+                    print(f"  - pattern: \"{cb['pattern']}\"")
+                    print(f"    reason: \"{cb['reason']}\"")
+        return 0
+
+    if args.tool:
+        tool_args: dict = {}
+        if args.command_str:
+            tool_args["command"] = args.command_str
+        if args.path:
+            tool_args["path"] = args.path
+
+        verdict = enforcer.check(args.tool, tool_args)
+
+        if args.format == "json":
+            print(json.dumps({
+                "tool": args.tool,
+                "allowed": verdict.allowed,
+                "violated_rules": verdict.violated_rules,
+                "warnings": verdict.warnings,
+            }, indent=2))
+        else:
+            status = "ALLOWED" if verdict.allowed else "BLOCKED"
+            print(f"[{status}] {args.tool}")
+            for rule in verdict.violated_rules:
+                print(f"  Rule violated: {rule}")
+            for w in verdict.warnings:
+                print(f"  Warning: {w}")
+
+        return 0 if verdict.allowed else 1
+
+    # Default: show extracted rules
+    print(enforcer.summary())
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
@@ -1038,6 +1111,20 @@ def main(argv: list[str] | None = None) -> int:
         "--format", choices=["text", "json"], default="text", help="Output format"
     )
 
+    # enforce command
+    enforce_parser = subparsers.add_parser(
+        "enforce", help="Extract and enforce CLAUDE.md rules as deterministic checks"
+    )
+    enforce_parser.add_argument("--file", "-f", help="CLAUDE.md file path (default: CLAUDE.md)")
+    enforce_parser.add_argument("--show-rules", action="store_true", help="Show extracted rules")
+    enforce_parser.add_argument("--export-policy", action="store_true", help="Export as guard policy YAML/JSON")
+    enforce_parser.add_argument("--tool", "-t", help="Tool name to check")
+    enforce_parser.add_argument("--command", dest="command_str", help="Command argument")
+    enforce_parser.add_argument("--path", help="Path argument")
+    enforce_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -1082,6 +1169,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_guard(args)
     elif args.command == "replay":
         return cmd_replay(args)
+    elif args.command == "enforce":
+        return cmd_enforce(args)
     elif args.command == "serve":
         return cmd_serve(args)
     else:
