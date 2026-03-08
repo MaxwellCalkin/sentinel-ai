@@ -347,6 +347,28 @@ const LEET_TARGETS = [
 
 const DANGEROUS_DECODED = /(ignore\s+(all\s+)?instructions|system\s+prompt|rm\s+-rf|drop\s+table|delete\s+from|exec\s*\(|eval\s*\(|subprocess|os\.system|__import__|\/etc\/passwd|\/etc\/shadow|\.ssh\/|password|secret.?key|api.?key|access.?token)/i;
 
+// Suspicious keywords for string concatenation and char code detection
+const CONCAT_SUSPICIOUS_KEYWORDS = ['eval', 'exec', 'system', 'passwd', 'import', 'require', 'Function', 'setTimeout', 'setInterval', 'constructor'];
+
+// Homoglyph map: visually similar Unicode characters -> ASCII equivalents
+const HOMOGLYPH_MAP: Record<string, string> = {
+  '\u0410': 'A', '\u0412': 'B', '\u0421': 'C', '\u0415': 'E', '\u041D': 'H',
+  '\u041A': 'K', '\u041C': 'M', '\u041E': 'O', '\u0420': 'P', '\u0422': 'T',
+  '\u0425': 'X', '\u0430': 'a', '\u0435': 'e', '\u043E': 'o', '\u0440': 'p',
+  '\u0441': 'c', '\u0443': 'y', '\u0445': 'x', '\u0456': 'i', '\u0458': 'j',
+  '\u04BB': 'h', '\u04C0': 'I',
+  // Latin look-alikes
+  '\u0131': 'i', '\u0237': 'j',
+  // Greek
+  '\u0391': 'A', '\u0392': 'B', '\u0395': 'E', '\u0396': 'Z', '\u0397': 'H',
+  '\u0399': 'I', '\u039A': 'K', '\u039C': 'M', '\u039D': 'N', '\u039F': 'O',
+  '\u03A1': 'P', '\u03A4': 'T', '\u03A5': 'Y', '\u03A7': 'X',
+  '\u03B1': 'a', '\u03B5': 'e', '\u03BF': 'o', '\u03C1': 'p',
+  // Full-width Latin
+  '\uFF45': 'e', '\uFF56': 'v', '\uFF41': 'a', '\uFF4C': 'l',
+  '\uFF45': 'e', '\uFF58': 'x', '\uFF43': 'c',
+};
+
 function decodeLeet(text: string): string {
   return text.toLowerCase().split('').map(c => LEET_MAP[c] || c).join('');
 }
@@ -357,6 +379,46 @@ function rot13(text: string): string {
   );
 }
 
+function tryHexDecode(hexStr: string): string | null {
+  try {
+    const hexBytes = hexStr.match(/[0-9a-fA-F]{2}/g);
+    if (!hexBytes || hexBytes.length < 4) return null;
+    const bytes = hexBytes.map(b => parseInt(b, 16));
+    const text = String.fromCharCode(...bytes);
+    const printable = [...text].filter(c => {
+      const code = c.charCodeAt(0);
+      return (code >= 32 && code < 127) || c === '\n' || c === '\t';
+    }).length;
+    if (printable / text.length >= 0.8) return text;
+  } catch { /* invalid hex */ }
+  return null;
+}
+
+function tryUnicodeDecode(escaped: string): string | null {
+  try {
+    const codePoints = escaped.match(/[0-9a-fA-F]{4}/g);
+    if (!codePoints || codePoints.length < 4) return null;
+    const text = codePoints.map(cp => String.fromCharCode(parseInt(cp, 16))).join('');
+    const printable = [...text].filter(c => {
+      const code = c.charCodeAt(0);
+      return (code >= 32 && code < 127) || c === '\n' || c === '\t';
+    }).length;
+    if (printable / text.length >= 0.8) return text;
+  } catch { /* invalid unicode escapes */ }
+  return null;
+}
+
+function decodeHomoglyphs(text: string): string {
+  return [...text].map(c => HOMOGLYPH_MAP[c] || c).join('');
+}
+
+function hasHomoglyphs(text: string): boolean {
+  for (const c of text) {
+    if (HOMOGLYPH_MAP[c]) return true;
+  }
+  return false;
+}
+
 export class ObfuscationScanner implements Scanner {
   name = 'obfuscation';
 
@@ -364,52 +426,88 @@ export class ObfuscationScanner implements Scanner {
     const findings: Finding[] = [];
 
     // Zero-width character detection
+    findings.push(...this._checkZeroWidth(text));
+
+    // ROT13 detection
+    findings.push(...this._checkRot13(text));
+
+    // Leetspeak detection
+    findings.push(...this._checkLeetspeak(text));
+
+    // Base64 detection
+    findings.push(...this._checkBase64(text));
+
+    // Hex-encoded string detection
+    findings.push(...this._checkHex(text));
+
+    // Unicode escape detection
+    findings.push(...this._checkUnicodeEscapes(text));
+
+    // String concatenation obfuscation
+    findings.push(...this._checkStringConcat(text));
+
+    // Character code manipulation (String.fromCharCode, charCodeAt)
+    findings.push(...this._checkCharCode(text));
+
+    // Homoglyph attacks (visually similar characters)
+    findings.push(...this._checkHomoglyphs(text));
+
+    return findings;
+  }
+
+  private _checkZeroWidth(text: string): Finding[] {
     const zwcPattern = /[\u200B\u200C\u200D\uFEFF\u200E\u200F\u202A-\u202E\u2060-\u2064]/g;
     const zwcMatches = text.match(zwcPattern);
     if (zwcMatches && zwcMatches.length >= 3) {
-      findings.push({
+      return [{
         scanner: this.name,
         category: 'obfuscation',
         description: `${zwcMatches.length} zero-width characters detected — possible steganographic payload or filter bypass`,
         risk: 'HIGH',
         metadata: { encoding: 'zero_width', count: zwcMatches.length },
-      });
+      }];
     }
+    return [];
+  }
 
-    // ROT13 detection
+  private _checkRot13(text: string): Finding[] {
     const rot13Match = text.match(/(rot13|rot-13|rotate\s*13)\s*[:=]?\s*([A-Za-z\s]{8,})/i);
     if (rot13Match) {
       const decoded = rot13(rot13Match[2]);
       if (DANGEROUS_DECODED.test(decoded)) {
-        findings.push({
+        return [{
           scanner: this.name,
           category: 'obfuscation',
           description: `ROT13-encoded payload contains dangerous content: ${decoded.substring(0, 80)}`,
           risk: 'HIGH',
           span: rot13Match.index !== undefined ? [rot13Match.index, rot13Match.index + rot13Match[0].length] : undefined,
           metadata: { encoding: 'rot13', decoded: decoded.substring(0, 200) },
-        });
+        }];
       }
     }
+    return [];
+  }
 
-    // Leetspeak detection
+  private _checkLeetspeak(text: string): Finding[] {
     const decoded = decodeLeet(text);
     for (const target of LEET_TARGETS) {
       if (decoded.includes(target) && !text.toLowerCase().includes(target)) {
         const idx = decoded.indexOf(target);
-        findings.push({
+        return [{
           scanner: this.name,
           category: 'obfuscation',
           description: `Leetspeak obfuscation detected: '${target}' hidden in text`,
           risk: 'MEDIUM',
           span: [idx, idx + target.length],
           metadata: { encoding: 'leetspeak', decoded_term: target },
-        });
-        break;
+        }];
       }
     }
+    return [];
+  }
 
-    // Base64 detection (Node.js only — atob/btoa or Buffer)
+  private _checkBase64(text: string): Finding[] {
+    const findings: Finding[] = [];
     const b64Pattern = /(?<![A-Za-z0-9+/=])([A-Za-z0-9+/]{16,}={0,2})(?![A-Za-z0-9+/=])/g;
     let b64Match: RegExpExecArray | null;
     while ((b64Match = b64Pattern.exec(text)) !== null) {
@@ -430,8 +528,139 @@ export class ObfuscationScanner implements Scanner {
         }
       } catch { /* not valid base64 */ }
     }
+    return findings;
+  }
+
+  private _checkHex(text: string): Finding[] {
+    const findings: Finding[] = [];
+
+    // \x41\x42 style hex escapes
+    const hexEscapePattern = /((?:\\x[0-9a-fA-F]{2}){4,})/g;
+    let hexMatch: RegExpExecArray | null;
+    while ((hexMatch = hexEscapePattern.exec(text)) !== null) {
+      const decoded = tryHexDecode(hexMatch[1]);
+      if (decoded && DANGEROUS_DECODED.test(decoded)) {
+        findings.push({
+          scanner: this.name,
+          category: 'obfuscation',
+          description: `Hex-encoded payload contains dangerous content: ${decoded.substring(0, 80)}`,
+          risk: 'HIGH',
+          span: [hexMatch.index, hexMatch.index + hexMatch[0].length],
+          metadata: { encoding: 'hex', decoded: decoded.substring(0, 200) },
+        });
+      }
+    }
+
+    // 0x41 0x42 style hex
+    const hex0xPattern = /((?:0x[0-9a-fA-F]{2}\s*){4,})/g;
+    let hex0xMatch: RegExpExecArray | null;
+    while ((hex0xMatch = hex0xPattern.exec(text)) !== null) {
+      const decoded = tryHexDecode(hex0xMatch[1]);
+      if (decoded && DANGEROUS_DECODED.test(decoded)) {
+        findings.push({
+          scanner: this.name,
+          category: 'obfuscation',
+          description: `Hex-encoded payload contains dangerous content: ${decoded.substring(0, 80)}`,
+          risk: 'HIGH',
+          span: [hex0xMatch.index, hex0xMatch.index + hex0xMatch[0].length],
+          metadata: { encoding: 'hex', decoded: decoded.substring(0, 200) },
+        });
+      }
+    }
 
     return findings;
+  }
+
+  private _checkUnicodeEscapes(text: string): Finding[] {
+    const findings: Finding[] = [];
+    const unicodePattern = /((?:\\u[0-9a-fA-F]{4}){4,})/g;
+    let uMatch: RegExpExecArray | null;
+    while ((uMatch = unicodePattern.exec(text)) !== null) {
+      const decoded = tryUnicodeDecode(uMatch[1]);
+      if (decoded && DANGEROUS_DECODED.test(decoded)) {
+        findings.push({
+          scanner: this.name,
+          category: 'obfuscation',
+          description: `Unicode-escaped payload contains dangerous content: ${decoded.substring(0, 80)}`,
+          risk: 'HIGH',
+          span: [uMatch.index, uMatch.index + uMatch[0].length],
+          metadata: { encoding: 'unicode_escape', decoded: decoded.substring(0, 200) },
+        });
+      }
+    }
+    return findings;
+  }
+
+  private _checkStringConcat(text: string): Finding[] {
+    const findings: Finding[] = [];
+    // Detect string concatenation patterns like 'ev'+'al', "ev"+"al", 'ev'+ 'al'
+    const concatPattern = /(?:['"`][a-zA-Z]{1,6}['"`]\s*\+\s*){1,}['"`][a-zA-Z]{1,6}['"`]/g;
+    let concatMatch: RegExpExecArray | null;
+    while ((concatMatch = concatPattern.exec(text)) !== null) {
+      // Extract the string parts and join them
+      const parts = concatMatch[0].match(/['"`]([a-zA-Z]{1,6})['"`]/g);
+      if (parts) {
+        const joined = parts.map(p => p.slice(1, -1)).join('');
+        for (const keyword of CONCAT_SUSPICIOUS_KEYWORDS) {
+          if (joined.toLowerCase() === keyword.toLowerCase()) {
+            findings.push({
+              scanner: this.name,
+              category: 'obfuscation',
+              description: `String concatenation used to build suspicious keyword: '${keyword}'`,
+              risk: 'HIGH',
+              span: [concatMatch.index, concatMatch.index + concatMatch[0].length],
+              metadata: { encoding: 'string_concat', reconstructed: keyword, match: concatMatch[0] },
+            });
+            break;
+          }
+        }
+      }
+    }
+    return findings;
+  }
+
+  private _checkCharCode(text: string): Finding[] {
+    const findings: Finding[] = [];
+    // String.fromCharCode(101, 118, 97, 108) patterns
+    const charCodePattern = /String\.fromCharCode\s*\(\s*([\d,\s]+)\s*\)/gi;
+    let ccMatch: RegExpExecArray | null;
+    while ((ccMatch = charCodePattern.exec(text)) !== null) {
+      try {
+        const codes = ccMatch[1].split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+        if (codes.length >= 3) {
+          const decoded = String.fromCharCode(...codes);
+          if (DANGEROUS_DECODED.test(decoded)) {
+            findings.push({
+              scanner: this.name,
+              category: 'obfuscation',
+              description: `Character code manipulation builds dangerous content: ${decoded.substring(0, 80)}`,
+              risk: 'HIGH',
+              span: [ccMatch.index, ccMatch.index + ccMatch[0].length],
+              metadata: { encoding: 'char_code', decoded: decoded.substring(0, 200) },
+            });
+          }
+        }
+      } catch { /* invalid char codes */ }
+    }
+    return findings;
+  }
+
+  private _checkHomoglyphs(text: string): Finding[] {
+    if (!hasHomoglyphs(text)) return [];
+    const decoded = decodeHomoglyphs(text);
+    if (DANGEROUS_DECODED.test(decoded) && !DANGEROUS_DECODED.test(text)) {
+      // Find the first dangerous match in the decoded text for the description
+      const dangerousMatch = decoded.match(DANGEROUS_DECODED);
+      const matchStr = dangerousMatch ? dangerousMatch[0] : 'suspicious content';
+      return [{
+        scanner: this.name,
+        category: 'obfuscation',
+        description: `Homoglyph attack detected: visually similar characters hide '${matchStr.substring(0, 60)}'`,
+        risk: 'HIGH',
+        metadata: { encoding: 'homoglyph', decoded: decoded.substring(0, 200) },
+      }];
+    }
+    return [];
   }
 }
 
