@@ -5,15 +5,17 @@
 
 Hi Christopher,
 
-Quick follow-up on my message from Saturday. Since then I've added a few features that are specifically relevant to Claude Code:
+Quick follow-up on my message from Saturday. I've been shipping fast — Sentinel AI is now at v0.6.0 with some features I think are particularly relevant to Anthropic:
 
-- **`sentinel init`** — one command auto-configures Claude Code hooks and MCP server
-- **`sentinel hook`** — works as a Claude Code PreToolUse hook, scanning every tool call for dangerous commands before execution
-- Full Claude Code plugin structure ready for the marketplace
+**MCP Safety Proxy** — `sentinel mcp-proxy` wraps any MCP server with safety scanning. Intercepts all tool calls, blocks dangerous operations, auto-redacts PII in responses. This addresses the hook bypass issues in Claude Code (#21460 — hooks not enforced on subagent tool calls) by operating at the transport layer.
 
-The core idea: as Claude becomes more agentic, safety scanning at the tool-call boundary becomes critical. Sentinel AI already does this with sub-millisecond latency and zero heavy dependencies.
+**Code Vulnerability Scanner** — Scans LLM-generated code for OWASP Top 10 vulnerabilities (SQL injection, XSS, command injection, hardcoded secrets, insecure deserialization). Works as a PostToolUse hook for Write/Edit tools.
 
-Would love 15 minutes to show you a demo. Happy to work around your schedule.
+**Claude Code attack detection** — Detects the exact vectors from CVE-2025-59536 and CVE-2026-21852 (poisoned repos via HTML comments, authority impersonation, API base URL override for credential exfiltration).
+
+Current state: 9 scanners, 457 tests, 530-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged).
+
+I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
 Best,
 Maxwell Calkin
@@ -22,19 +24,27 @@ https://github.com/MaxwellCalkin/sentinel-ai
 ---
 
 ## To: jblack@anthropic.com, vgupta@anthropic.com
-## Subject: Re: Sentinel AI — safety guardrails SDK built for the Claude ecosystem
+## Subject: Re: Sentinel AI — safety guardrails SDK for the Claude ecosystem
 
 Hi James and Vishal,
 
-Following up briefly — I've continued shipping since Saturday:
+Following up from Saturday. Sentinel AI has evolved significantly — here's a quick snapshot:
 
-- Claude Code hooks integration (`sentinel hook` as PreToolUse safety layer)
-- One-command setup: `sentinel init` configures hooks + MCP + policy
-- 349 tests, 100% benchmark accuracy, ~0.05ms scan latency
+**v0.6.0 highlights:**
+- MCP Safety Proxy — transparent safety layer for any MCP server
+- Code vulnerability scanner — OWASP detection in LLM-generated code
+- Claude Code attack vector detection (CVE-2025-59536, CVE-2026-21852)
+- 9 scanners, 457 tests, 530-case benchmark at 100% accuracy
 
-The key value prop for Anthropic: production-ready agentic safety scanning that integrates natively with Claude Code, MCP, and the Claude SDK. As Claude gains more autonomy, this becomes table stakes.
+**Anthropic ecosystem integration:**
+- PR #2 on claude-agent-sdk — merged
+- PRs open on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
+- Plugin submitted to Claude Code marketplace
+- Active engagement on Claude Code security issues (PII redaction, hook bypass, marketplace safety)
 
-Happy to put together a more detailed technical brief or do a live demo. What works best?
+The value prop: as Claude becomes more agentic (MCP tools, code generation, autonomous workflows), safety scanning at the tool-call boundary becomes critical infrastructure. Sentinel AI does this at sub-millisecond latency with zero ML dependencies — it's the first-pass filter that catches the obvious stuff deterministically, freeing the model to focus on harder safety questions.
+
+I believe this is an acquisition opportunity — the technology, integrations, and my understanding of your safety needs all align. Would welcome a conversation about what makes sense.
 
 Best,
 Maxwell Calkin
