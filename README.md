@@ -1,5 +1,10 @@
 # Sentinel AI
 
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
+[![Tests](https://img.shields.io/badge/tests-349%20passing-brightgreen.svg)](#benchmark)
+[![Benchmark](https://img.shields.io/badge/benchmark-288%20cases%20100%25-brightgreen.svg)](#benchmark)
+
 **Real-time safety guardrails for LLM applications.**
 
 Sentinel AI is a lightweight, zero-dependency safety layer that protects your LLM applications from prompt injection, PII leaks, harmful content, hallucinations, and toxic outputs — with sub-millisecond latency.
@@ -43,12 +48,18 @@ Then use `/sentinel-ai:scan`, `/sentinel-ai:check-pii`, and `/sentinel-ai:check-
 pip install sentinel-ai
 ```
 
+Or install directly from GitHub:
+
+```bash
+pip install git+https://github.com/MaxwellCalkin/sentinel-ai.git
+```
+
 With optional integrations:
 
 ```bash
-pip install sentinel-ai[api]         # FastAPI server
-pip install sentinel-ai[langchain]   # LangChain integration
-pip install sentinel-ai[llamaindex]  # LlamaIndex integration
+pip install "sentinel-ai[api]"         # FastAPI server
+pip install "sentinel-ai[langchain]"   # LangChain integration
+pip install "sentinel-ai[llamaindex]"  # LlamaIndex integration
 ```
 
 ## Quick Start
