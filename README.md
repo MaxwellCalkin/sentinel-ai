@@ -85,6 +85,27 @@ print(result.redacted_text)
 # "My email is [EMAIL] and SSN is [SSN]"
 ```
 
+### Claude Agent SDK Integration
+
+```python
+from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, HookMatcher
+from sentinel.middleware.agent_sdk import sentinel_pretooluse_hook
+
+# Add Sentinel AI as a safety layer for all tool calls
+options = ClaudeAgentOptions(
+    hooks={
+        "PreToolUse": [
+            HookMatcher(matcher=".*", hooks=[sentinel_pretooluse_hook]),
+        ],
+    }
+)
+
+async with ClaudeSDKClient(options=options) as client:
+    await client.query("Help me with this task")
+    async for msg in client.receive_response():
+        print(msg)  # Dangerous tool calls are automatically blocked
+```
+
 ### Claude SDK Integration
 
 ```python
@@ -473,6 +494,7 @@ print(results.summary())
 | Multi-turn tracking | **Yes** | Yes | No | No |
 | Streaming protection | Yes | No | No | No |
 | Multilingual injection (12 langs) | **Yes** | No | No | No |
+| Claude Agent SDK integration | **Yes** | No | No | No |
 
 ## Architecture
 
@@ -493,7 +515,7 @@ sentinel/
   conversation.py      # Multi-turn conversation safety tracking
   adversarial.py       # Adversarial robustness testing / red-teaming
   client.py            # Python SDK client (sync + async)
-  middleware/          # Claude, OpenAI, LangChain, LlamaIndex
+  middleware/          # Claude, Claude Agent SDK, OpenAI, LangChain, LlamaIndex
   benchmarks.py        # Precision/recall benchmark suite
 sdk-js/                # TypeScript/JavaScript SDK
 ```
