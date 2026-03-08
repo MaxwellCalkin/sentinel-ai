@@ -1,7 +1,7 @@
 SHOW HN POST DRAFT
 ==================
 
-Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps (~0.05ms latency)
+Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps (~0.05ms latency, 823 tests)
 
 URL: https://github.com/MaxwellCalkin/sentinel-ai
 
@@ -10,29 +10,28 @@ Comment (post this as the first comment):
 Hi HN! I built Sentinel AI because I was frustrated that every LLM safety tool required GPU inference, API calls, or heavy ML dependencies. I wanted guardrails I could drop into any Python app with zero latency overhead.
 
 What it does:
-- 10 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, tool-use safety, structured output validation (XSS/SQLi in JSON), OWASP code vulnerability detection, and obfuscation/encoding attack detection
-- LLM API firewall: `sentinel proxy` is a transparent reverse proxy for any LLM API (Anthropic, OpenAI) — scans all requests/responses, blocks attacks, redacts PII, no code changes needed
-- MCP safety proxy: `sentinel mcp-proxy` wraps any MCP server with safety scanning — blocks dangerous tool calls, auto-redacts PII in responses
-- Claude Code hooks: `sentinel hook` scans every tool call before execution, blocks dangerous commands in real-time
-- Code vulnerability scanner: detects SQL injection, command injection, XSS, hardcoded secrets, insecure deserialization in LLM-generated code
-- Multi-turn conversation safety: detects gradual jailbreak escalation across turns
-- SARIF output: integrates with GitHub Code Scanning / Security tab and any SARIF-consuming CI tool
-- Built-in adversarial red-teaming: generates 10+ evasion variants (homoglyphs, zero-width chars, leetspeak) to stress-test your scanners
+- 11 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, tool-use safety, structured output validation, OWASP code vulnerability detection, obfuscation/encoding attack detection, and hardcoded secrets/credential scanning
+- Project-wide security scanner: `sentinel project-scan` gives a 0-100 security score — runs ALL scanners (supply chain, secrets, CLAUDE.md injection, code OWASP, MCP schemas, security config) in one command
+- Secrets scanner: detects 40+ hardcoded API key patterns (AWS, GitHub, Stripe, Slack, OpenAI, Anthropic, etc.) with entropy analysis and false positive filtering
+- Supply chain scanner: `sentinel dep-scan` detects typosquatting, malicious packages, suspicious URLs in requirements.txt/package.json
+- CLAUDE.md injection scanner: detects hidden HTML comments, authority impersonation, zero-width char smuggling, base URL override in project instruction files
+- LLM API firewall: `sentinel proxy` is a transparent reverse proxy for any LLM API — scans all requests/responses, blocks attacks, redacts PII
+- MCP safety proxy: `sentinel mcp-proxy` wraps any MCP server with safety scanning
+- Claude Code hooks: `sentinel hook` scans every tool call before execution
+- GitHub Action: 3-line workflow for comprehensive CI/CD security scanning
+- Security badge generator: `sentinel badge` creates SVG badges for READMEs
 - ~0.05ms average scan latency -- no GPU, no API calls
 - Single dependency: `regex`
-- Multilingual injection detection: 12 languages + cross-lingual attacks
 - 546-case benchmark with 100% accuracy (329 TP, 0 FP, 217 TN, 0 FN)
-- SARIF v2.1.0 output for GitHub Code Scanning integration
-- Git pre-commit hook: `sentinel pre-commit` scans staged code for OWASP vulnerabilities
-- Security audit: `sentinel audit` scores your project's security config (0-100)
-- Supply chain scanner: `sentinel dep-scan` detects typosquatting, malicious packages, suspicious URLs in requirements.txt/package.json
-- CLAUDE.md injection scanner: `sentinel claudemd-scan` detects 11 categories of injection vectors in project instruction files
-- 687 tests passing
+- 823 tests passing
+- Live demo: https://maxwellcalkin.github.io/sentinel-ai/
 
 Quick start:
 ```bash
-pip install sentinel-guardrails
-sentinel init    # auto-configures Claude Code hooks + MCP server
+pip install "sentinel-guardrails @ git+https://github.com/MaxwellCalkin/sentinel-ai.git"
+sentinel project-scan    # comprehensive 0-100 security score
+sentinel secrets-scan    # find hardcoded API keys
+sentinel init            # auto-configure Claude Code hooks
 ```
 
 ```python
@@ -44,45 +43,25 @@ print(result.blocked)  # True
 print(result.risk)     # RiskLevel.CRITICAL
 ```
 
+Or add to any CI pipeline in 3 lines:
+```yaml
+- uses: actions/checkout@v4
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    project-scan: "true"
+```
+
 What makes it different from NeMo Guardrails, LLM Guard, etc:
 1. Actually zero-dep. The core is pattern matching, not a model calling another model.
 2. Sub-millisecond. You can scan every token in a streaming response without perceptible delay.
-3. Agentic safety -- scans tool calls for shell injection, data exfiltration, privilege escalation before they execute.
-4. Claude Code integration -- works as a PreToolUse hook, MCP server, and CLI out of the box.
-5. Multilingual -- detects injection in Chinese, Japanese, Korean, Russian, Arabic, Spanish, French, German, Portuguese, Hindi + cross-lingual mixed-script attacks.
-6. Red-team yourself -- AdversarialTester generates evasion variants and shows you exactly where your scanner is blind.
+3. Comprehensive: 11 scanners covering prompt injection through supply chain attacks and hardcoded secrets.
+4. Claude Code integration: works as a PreToolUse hook, MCP server, and CLI.
+5. Multilingual: detects injection in 12 languages + cross-lingual attacks.
+6. Self-testable: `sentinel red-team` generates evasion variants to find your blind spots.
 
-I know regex-based detection has limits (adversarial evasion, novel attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment or model-based tools like Claude Code Security. They're complementary: Sentinel AI catches known patterns in ~0.05ms, then the model does the deep reasoning.
+I know regex-based detection has limits (adversarial evasion, novel attacks). But for 90%+ of production use cases, you don't need a model — you need something fast and deterministic that catches the obvious stuff. Think of it as a first-pass filter: Sentinel AI catches known patterns in ~0.05ms, then your model does the deep reasoning.
 
-Apache 2.0 licensed. 687 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
-
-
-REDDIT POST DRAFT (r/MachineLearning, r/LocalLLaMA)
-====================================================
-
-Title: [P] Sentinel AI: Open-source safety guardrails for LLM apps with sub-millisecond latency and zero ML dependencies
-
-I built an open-source safety scanning library for LLM applications that uses pattern matching instead of model inference. It scans for prompt injection, PII leaks, harmful content, toxicity, hallucinations, dangerous tool calls, and XSS/SQLi in structured outputs.
-
-Key stats:
-- 546-case benchmark: 100% accuracy (0 false positives, 0 false negatives)
-- ~0.05ms average scan latency
-- 10 pluggable scanners
-- Only dependency: `regex`
-- 570 tests
-
-The main insight: for safety scanning, you don't always need another model. Fast, deterministic pattern matching catches 90%+ of attacks (prompt injection, PII, dangerous commands) at sub-millisecond speed. Use it as a first-pass filter before or after your LLM.
-
-Features I'm most proud of:
-- **Agentic tool-use safety**: scans every tool call for shell injection, data exfiltration, credential access
-- **Claude Code hooks**: `sentinel hook` as a PreToolUse guard that blocks dangerous commands before execution
-- **Adversarial red-teaming**: generates evasion variants (homoglyphs, zero-width chars, leetspeak) to test your own scanner coverage
-- **Multi-turn conversation tracking**: detects gradual jailbreak escalation across turns
-
-GitHub: https://github.com/MaxwellCalkin/sentinel-ai
-License: Apache 2.0
-
-Looking for feedback on false positive rates and pattern coverage gaps.
+Apache 2.0 licensed. 823 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
 
 
 TWITTER/X POST DRAFT
@@ -90,21 +69,23 @@ TWITTER/X POST DRAFT
 
 I open-sourced Sentinel AI — real-time safety guardrails for LLM apps.
 
-~0.05ms latency. No GPU. No API calls. 1 dependency.
+~0.05ms latency. No GPU. No API calls. 1 dependency. 823 tests.
 
 What it scans:
 - Prompt injection (12 languages)
 - PII detection + auto-redaction
-- Harmful content & toxicity
-- Dangerous tool calls (rm -rf, exfiltration)
-- Claude Code attack vectors (CVE-2025-59536, CVE-2026-21852)
+- Hardcoded secrets (40+ API key patterns)
+- Supply chain attacks (typosquatting, malicious packages)
+- CLAUDE.md injection vectors
+- Dangerous tool calls
+- OWASP code vulnerabilities
 
-546-case benchmark, 100% accuracy.
+One command to scan your entire project:
+sentinel project-scan
 
 Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
-
 GitHub: https://github.com/MaxwellCalkin/sentinel-ai
-Apache 2.0 | pip install sentinel-guardrails
+Apache 2.0 licensed
 
 
 LINKEDIN POST DRAFT
@@ -116,20 +97,23 @@ The problem: Every existing guardrails tool requires GPU inference or API calls.
 
 Sentinel AI scans LLM inputs and outputs in ~0.05ms — using pattern matching, not model inference. It catches:
 
-- Prompt injection attacks (including 12 languages + cross-lingual)
-- PII leaks (emails, SSNs, credit cards, API keys) with auto-redaction
-- Harmful content and toxicity
+- Prompt injection attacks (12 languages + cross-lingual)
+- PII leaks with auto-redaction
+- Hardcoded secrets and API keys (40+ provider patterns)
+- Supply chain attacks in dependencies
+- CLAUDE.md injection vectors (hidden comments, authority impersonation, zero-width chars)
 - Dangerous tool calls in agentic workflows
-- Known Claude Code attack vectors (poisoned repos, authority impersonation, API key exfiltration)
+- OWASP code vulnerabilities
 
-546-case benchmark at 100% accuracy. Zero false positives. One dependency (regex).
+One command scans your entire project: `sentinel project-scan`
+Add to any CI pipeline in 3 lines with our GitHub Action.
 
-It integrates with Claude, OpenAI, LangChain, LlamaIndex, and runs as a Claude Code hook or MCP server.
-
-I've submitted PRs to 5 Anthropic repositories to demonstrate the integrations. The security-review repo's own README says it's "not hardened against prompt injection" — we built the fix.
+823 tests. 546-case benchmark at 100% accuracy. Zero false positives.
 
 Try the live demo: https://maxwellcalkin.github.io/sentinel-ai/
 GitHub: https://github.com/MaxwellCalkin/sentinel-ai
+Blog: https://maxwellcalkin.github.io/sentinel-ai/blog/claude-md-attacks.html
+
 Apache 2.0 licensed.
 
-#AIsafety #LLM #OpenSource #Claude #Anthropic #MachineLearning
+#AIsafety #LLM #OpenSource #Claude #Anthropic #DevSecOps
