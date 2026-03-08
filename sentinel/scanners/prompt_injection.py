@@ -143,11 +143,182 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
 ]
 
 
+# Multilingual prompt injection patterns — 12 languages + cross-lingual detection
+_MULTILINGUAL_PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
+    # Chinese (Simplified + Traditional) — instruction override
+    (
+        "multilingual_zh_override",
+        re.compile(
+            r"(忽略|无视|忘记|跳过|绕过|無視|忘記|跳過|繞過)"
+            r".{0,10}"
+            r"(指令|指示|规则|限制|規則|約束|守则)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Chinese)",
+    ),
+    # Chinese — prompt extraction
+    (
+        "multilingual_zh_extraction",
+        re.compile(
+            r"(显示|展示|告诉我|输出|透露|顯示|告訴我|輸出|透露)"
+            r".{0,10}"
+            r"(系统提示|系统指令|系統提示|系統指令|隐藏指令|隱藏指令)"
+        ),
+        RiskLevel.MEDIUM,
+        "Multilingual injection: prompt extraction (Chinese)",
+    ),
+    # Japanese — instruction override (noun + を + verb)
+    (
+        "multilingual_ja_override",
+        re.compile(
+            r"(指示|命令|ルール|制限|制約|ガイドライン)"
+            r".{0,8}"
+            r"(無視|忘れ|スキップ|バイパス)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Japanese)",
+    ),
+    # Japanese — prompt extraction
+    (
+        "multilingual_ja_extraction",
+        re.compile(
+            r"(システムプロンプト|システム指示|隠された指示|内部指示)"
+            r".{0,8}"
+            r"(見せて|教えて|表示|出力|公開)"
+        ),
+        RiskLevel.MEDIUM,
+        "Multilingual injection: prompt extraction (Japanese)",
+    ),
+    # Korean — instruction override (noun + 을/를 + verb)
+    (
+        "multilingual_ko_override",
+        re.compile(
+            r"(지시|지침|규칙|제한|명령|제약)"
+            r".{0,8}"
+            r"(무시|잊어|건너뛰|우회)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Korean)",
+    ),
+    # Russian — instruction override
+    (
+        "multilingual_ru_override",
+        re.compile(
+            r"(?i)(игнорируй|забудь|пропусти|обойди|пренебреги)"
+            r".{0,30}"
+            r"(инструкции|указания|правила|ограничения|директивы)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Russian)",
+    ),
+    # Arabic — instruction override
+    (
+        "multilingual_ar_override",
+        re.compile(
+            r"(تجاهل|أهمل|انس|تخط)"
+            r".{0,20}"
+            r"(التعليمات|التوجيهات|القواعد|القيود|الأوامر)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Arabic)",
+    ),
+    # Spanish — instruction override
+    (
+        "multilingual_es_override",
+        re.compile(
+            r"(?i)(ignora|olvida|omite|salta)"
+            r"\s+.{0,20}"
+            r"(instrucciones|reglas|restricciones|directrices|limitaciones)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Spanish)",
+    ),
+    # French — instruction override (French-specific verbs)
+    (
+        "multilingual_fr_override",
+        re.compile(
+            r"(?i)(oublie|contourne|néglige)"
+            r"\s+.{0,20}"
+            r"(instructions|règles|restrictions|directives|consignes)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (French)",
+    ),
+    # French — with articles (catches "ignore les instructions")
+    (
+        "multilingual_fr_articles",
+        re.compile(
+            r"(?i)(ignore|oublie|contourne|néglige)\s+"
+            r"(les\s+|toutes?\s+les?\s+)"
+            r"(instructions|règles|restrictions|directives|consignes)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (French)",
+    ),
+    # German — instruction override
+    (
+        "multilingual_de_override",
+        re.compile(
+            r"(?i)(ignoriere|vergiss|umgehe|überspringe|missachte)"
+            r"\s+.{0,20}"
+            r"(Anweisungen|Regeln|Einschränkungen|Richtlinien|Vorgaben)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (German)",
+    ),
+    # Portuguese — instruction override (Portuguese-specific nouns)
+    (
+        "multilingual_pt_override",
+        re.compile(
+            r"(?i)(ignore|esqueça|pule|contorne|desconsidere)"
+            r"\s+.{0,20}"
+            r"(instruções|restrições|diretrizes)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Portuguese)",
+    ),
+    # Hindi — instruction override (noun + को + verb)
+    (
+        "multilingual_hi_override",
+        re.compile(
+            r"(निर्देश|नियम|प्रतिबंध|निर्देशों|नियमों)"
+            r".{0,10}"
+            r"(अनदेखा|भूल|नजरअंदाज|छोड़)"
+        ),
+        RiskLevel.CRITICAL,
+        "Multilingual injection: instruction override (Hindi)",
+    ),
+    # Cross-lingual: English injection keywords embedded in non-Latin text
+    (
+        "cross_lingual_injection",
+        re.compile(
+            r"(?i)"
+            r"[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af"
+            r"\u0400-\u04ff\u0600-\u06ff\u0900-\u097f]"
+            r".{0,50}"
+            r"(ignore\s+(all\s+)?(previous\s+)?instructions|bypass\s+(all\s+)?safety"
+            r"|system\s+prompt|jailbreak|unrestricted\s+mode)"
+            r".{0,50}"
+            r"[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af"
+            r"\u0400-\u04ff\u0600-\u06ff\u0900-\u097f]"
+        ),
+        RiskLevel.HIGH,
+        "Cross-lingual injection: English injection keywords in non-Latin text",
+    ),
+]
+
+
 class PromptInjectionScanner:
     name = "prompt_injection"
 
-    def __init__(self, custom_patterns: list[tuple[str, re.Pattern, RiskLevel, str]] | None = None):
+    def __init__(
+        self,
+        custom_patterns: list[tuple[str, re.Pattern, RiskLevel, str]] | None = None,
+        multilingual: bool = True,
+    ):
         self._patterns = list(_PATTERNS)
+        if multilingual:
+            self._patterns.extend(_MULTILINGUAL_PATTERNS)
         if custom_patterns:
             self._patterns.extend(custom_patterns)
 

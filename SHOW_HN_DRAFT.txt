@@ -1,7 +1,7 @@
 SHOW HN POST DRAFT
 ==================
 
-Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps with adversarial red-teaming
+Title: Show HN: Sentinel AI -- Zero-dep safety guardrails for LLM apps (~0.05ms latency)
 
 URL: https://github.com/MaxwellCalkin/sentinel-ai
 
@@ -10,21 +10,21 @@ Comment (post this as the first comment):
 Hi HN! I built Sentinel AI because I was frustrated that every LLM safety tool required GPU inference, API calls, or heavy ML dependencies. I wanted guardrails I could drop into any Python app with zero latency overhead.
 
 What it does:
-- 7 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, and tool-use safety (for agentic AI)
-- Multi-turn conversation safety: detects gradual jailbreak escalation, topic persistence, sandwich attacks across turns
-- Built-in adversarial red-teaming: generates 10+ evasion variants (homoglyphs, zero-width chars, leetspeak, payload splitting) to stress-test your scanner coverage
-- ~0.05ms average scan latency -- no GPU, no API calls, just regex + heuristics
+- 8 safety scanners: prompt injection, PII detection + redaction, harmful content, toxicity, hallucination signals, blocked terms, tool-use safety, and structured output validation (XSS/SQLi in JSON)
+- Claude Code hooks: `sentinel hook` scans every tool call before execution, blocks dangerous commands in real-time
+- Multi-turn conversation safety: detects gradual jailbreak escalation across turns
+- Built-in adversarial red-teaming: generates 10+ evasion variants (homoglyphs, zero-width chars, leetspeak) to stress-test your scanners
+- ~0.05ms average scan latency -- no GPU, no API calls
 - Single dependency: `regex`
-- 170-case benchmark with 100% accuracy (0 false positives, 0 false negatives)
+- Multilingual injection detection: 12 languages + cross-lingual attacks
+- 318-case benchmark with 100% accuracy (189 TP, 0 FP, 129 TN, 0 FN)
 
-What makes it different from Vigil, NeMo Guardrails, etc:
-1. Actually zero-dep. The core is pattern matching, not a model calling another model.
-2. Built specifically for the Claude/Anthropic ecosystem -- Claude Code plugin, MCP server, RSP v3.0-aligned risk reports
-3. Sub-millisecond. You can scan every token in a streaming response without perceptible delay.
-4. Agentic safety -- scans tool calls for shell injection, data exfiltration, privilege escalation before they execute
-5. Red-team yourself -- AdversarialTester generates evasion variants and shows you exactly where your scanner is blind
+Quick start:
+```bash
+pip install git+https://github.com/MaxwellCalkin/sentinel-ai.git
+sentinel init    # auto-configures Claude Code hooks + MCP server
+```
 
-Example:
 ```python
 from sentinel import SentinelGuard
 
@@ -34,12 +34,42 @@ print(result.blocked)  # True
 print(result.risk)     # RiskLevel.CRITICAL
 ```
 
-Claude Code plugin:
-```
-/plugin marketplace add MaxwellCalkin/sentinel-ai
-/plugin install sentinel-ai@sentinel-ai-safety
-```
+What makes it different from NeMo Guardrails, LLM Guard, etc:
+1. Actually zero-dep. The core is pattern matching, not a model calling another model.
+2. Sub-millisecond. You can scan every token in a streaming response without perceptible delay.
+3. Agentic safety -- scans tool calls for shell injection, data exfiltration, privilege escalation before they execute.
+4. Claude Code integration -- works as a PreToolUse hook, MCP server, and CLI out of the box.
+5. Multilingual -- detects injection in Chinese, Japanese, Korean, Russian, Arabic, Spanish, French, German, Portuguese, Hindi + cross-lingual mixed-script attacks.
+6. Red-team yourself -- AdversarialTester generates evasion variants and shows you exactly where your scanner is blind.
 
 I know regex-based detection has limits (adversarial evasion, multilingual attacks). But for 90%+ of production use cases, you don't need a model -- you need something fast and deterministic that catches the obvious stuff while your main model handles the rest. Think of it as a first-pass filter, not a replacement for alignment.
 
-Apache 2.0 licensed. Would love feedback on the scanner patterns and benchmark methodology.
+Apache 2.0 licensed. 349 tests passing. Would love feedback on the scanner patterns and benchmark methodology.
+
+
+REDDIT POST DRAFT (r/MachineLearning, r/LocalLLaMA)
+====================================================
+
+Title: [P] Sentinel AI: Open-source safety guardrails for LLM apps with sub-millisecond latency and zero ML dependencies
+
+I built an open-source safety scanning library for LLM applications that uses pattern matching instead of model inference. It scans for prompt injection, PII leaks, harmful content, toxicity, hallucinations, dangerous tool calls, and XSS/SQLi in structured outputs.
+
+Key stats:
+- 318-case benchmark: 100% accuracy (0 false positives, 0 false negatives)
+- ~0.05ms average scan latency
+- 8 pluggable scanners
+- Only dependency: `regex`
+- 349 tests
+
+The main insight: for safety scanning, you don't always need another model. Fast, deterministic pattern matching catches 90%+ of attacks (prompt injection, PII, dangerous commands) at sub-millisecond speed. Use it as a first-pass filter before or after your LLM.
+
+Features I'm most proud of:
+- **Agentic tool-use safety**: scans every tool call for shell injection, data exfiltration, credential access
+- **Claude Code hooks**: `sentinel hook` as a PreToolUse guard that blocks dangerous commands before execution
+- **Adversarial red-teaming**: generates evasion variants (homoglyphs, zero-width chars, leetspeak) to test your own scanner coverage
+- **Multi-turn conversation tracking**: detects gradual jailbreak escalation across turns
+
+GitHub: https://github.com/MaxwellCalkin/sentinel-ai
+License: Apache 2.0
+
+Looking for feedback on false positive rates and pattern coverage gaps.
