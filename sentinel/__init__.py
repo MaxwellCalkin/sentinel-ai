@@ -21,6 +21,7 @@ from sentinel.harden import harden_prompt, fence_user_input, sandwich_wrap, xml_
 from sentinel.rate_guard import RateGuard
 from sentinel.compliance import ComplianceMapper, Framework, ComplianceStatus
 from sentinel.agent_monitor import AgentMonitor
+from sentinel.threat_intel import ThreatFeed, ThreatCategory, Severity
 
 __version__ = "0.10.0"
 
@@ -54,4 +55,7 @@ __all__ = [
     "Framework",
     "ComplianceStatus",
     "AgentMonitor",
+    "ThreatFeed",
+    "ThreatCategory",
+    "Severity",
 ]

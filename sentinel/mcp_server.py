@@ -355,6 +355,46 @@ def handle_tools_list(params: dict) -> dict:
                     "required": ["texts"],
                 },
             },
+            {
+                "name": "threat_lookup",
+                "description": (
+                    "Look up known LLM attack patterns from a MITRE ATLAS-aligned "
+                    "threat intelligence database. Query by category/severity/tags, "
+                    "match text against known patterns, or look up a specific technique "
+                    "by ID. Covers 27+ indicators across prompt injection, jailbreak, "
+                    "data exfiltration, evasion, privilege escalation, and more."
+                ),
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": (
+                                "Text to match against known attack patterns. "
+                                "Returns matching threat indicators with severity."
+                            ),
+                        },
+                        "category": {
+                            "type": "string",
+                            "enum": [
+                                "prompt_injection", "jailbreak", "data_exfiltration",
+                                "model_manipulation", "privilege_escalation",
+                                "social_engineering", "evasion", "resource_abuse",
+                            ],
+                            "description": "Filter by threat category",
+                        },
+                        "severity": {
+                            "type": "string",
+                            "enum": ["low", "medium", "high", "critical"],
+                            "description": "Filter by severity level",
+                        },
+                        "id": {
+                            "type": "string",
+                            "description": "Look up a specific threat indicator by ID (e.g. PI-001)",
+                        },
+                    },
+                },
+            },
         ],
     }
 
@@ -387,6 +427,8 @@ def handle_tool_call(params: dict) -> dict:
         return _tool_generate_rsp_report(arguments)
     elif tool_name == "compliance_check":
         return _tool_compliance_check(arguments)
+    elif tool_name == "threat_lookup":
+        return _tool_threat_lookup(arguments)
     else:
         return {
             "content": [{"type": "text", "text": f"Unknown tool: {tool_name}"}],
@@ -804,6 +846,75 @@ def _tool_scan_conversation(args: dict) -> dict:
     return {
         "content": [{"type": "text", "text": json.dumps(output, indent=2)}],
     }
+
+
+def _tool_threat_lookup(args: dict) -> dict:
+    from sentinel.threat_intel import ThreatFeed, ThreatCategory, Severity
+
+    feed = ThreatFeed.default()
+    text = args.get("text")
+    threat_id = args.get("id")
+    category_name = args.get("category")
+    severity_name = args.get("severity")
+
+    # Look up by ID
+    if threat_id:
+        indicator = feed.get_by_id(threat_id)
+        if indicator:
+            output = {
+                "id": indicator.id,
+                "technique": indicator.technique,
+                "category": indicator.category.value,
+                "severity": indicator.severity.value,
+                "description": indicator.description,
+                "mitre_id": indicator.mitre_id,
+                "examples": indicator.examples,
+                "tags": indicator.tags,
+            }
+        else:
+            output = {"error": f"No indicator with ID: {threat_id}"}
+        return {"content": [{"type": "text", "text": json.dumps(output, indent=2)}]}
+
+    # Match text against patterns
+    if text:
+        matches = feed.match(text)
+        output = {
+            "matched": len(matches) > 0,
+            "match_count": len(matches),
+            "matches": [
+                {
+                    "id": m.id,
+                    "technique": m.technique,
+                    "category": m.category.value,
+                    "severity": m.severity.value,
+                    "description": m.description,
+                    "matched_text": m.matched_text,
+                    "confidence": m.confidence,
+                }
+                for m in matches
+            ],
+        }
+        return {"content": [{"type": "text", "text": json.dumps(output, indent=2)}]}
+
+    # Query by category/severity
+    category = ThreatCategory(category_name) if category_name else None
+    severity = Severity(severity_name) if severity_name else None
+    results = feed.query(category=category, severity=severity)
+
+    output = {
+        "total": len(results),
+        "indicators": [
+            {
+                "id": i.id,
+                "technique": i.technique,
+                "category": i.category.value,
+                "severity": i.severity.value,
+                "description": i.description,
+            }
+            for i in results
+        ],
+    }
+    return {"content": [{"type": "text", "text": json.dumps(output, indent=2)}]}
 
 
 def _send_response(response: dict) -> None:
