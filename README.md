@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-970%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-941%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -350,7 +350,7 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `scan_code`, `scan_secrets`, `check_canary`, `harden_prompt`, `generate_rsp_report`.
+Available MCP tools (12): `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `scan_code`, `scan_secrets`, `check_canary`, `harden_prompt`, `generate_rsp_report`, `compliance_check`.
 
 ### CLAUDE.md Security Scanner
 
@@ -752,6 +752,28 @@ batch = tester.test_batch([
 print(batch.summary())
 print(f"Weakest areas: {batch.weak_techniques}")
 ```
+
+### Regulatory Compliance Mapping
+
+Map scan results to EU AI Act, NIST AI RMF, and ISO/IEC 42001 controls. Get automated compliance status and remediation recommendations:
+
+```python
+from sentinel.compliance import ComplianceMapper, Framework
+
+mapper = ComplianceMapper()
+guard = SentinelGuard.default()
+results = [guard.scan(text) for text in user_inputs]
+
+report = mapper.evaluate(results, frameworks=[Framework.EU_AI_ACT])
+print(report.to_markdown())  # Full compliance report
+
+# Or get structured data
+data = report.to_dict()
+print(data["frameworks"][0]["risk_classification"])  # "Minimal Risk"
+print(data["frameworks"][0]["status"])               # "compliant"
+```
+
+Assesses 21 controls across three frameworks with automated risk classification, per-control status, and actionable remediation guidance.
 
 ## Enterprise Features
 
