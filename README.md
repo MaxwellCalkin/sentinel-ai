@@ -24,7 +24,7 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ## Why Sentinel AI?
 
 - **Fast**: ~0.05ms average scan latency. No GPU required. No API calls.
-- **Comprehensive**: 10 built-in scanners covering the OWASP LLM Top 10.
+- **Comprehensive**: 11 built-in scanners covering the OWASP LLM Top 10.
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
@@ -290,9 +290,29 @@ sentinel pre-commit                # Scan git staged files (git hook)
 sentinel audit                     # Audit project security config (score out of 100)
 sentinel claudemd-scan             # Scan CLAUDE.md for injection vectors
 sentinel dep-scan                  # Scan dependencies for supply chain attacks
+sentinel secrets-scan              # Scan source files for hardcoded secrets/API keys
 sentinel mcp-validate --file tools.json  # Validate MCP tool schemas for injection
+sentinel project-scan              # Comprehensive scan — runs ALL scanners, 0-100 score
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
+
+### Project-Wide Security Scan
+
+Run every scanner in one command — get a unified security score (0-100) across your entire project:
+
+```bash
+sentinel project-scan              # Scan current directory
+sentinel project-scan --dir /path  # Scan specific project
+sentinel project-scan --format json  # JSON output for CI/CD
+```
+
+Runs 6 security checks in one pass:
+1. **CLAUDE.md injection vectors** — hidden instructions, authority impersonation
+2. **Supply chain attacks** — typosquatting, malicious packages, install scripts
+3. **Hardcoded secrets** — API keys, tokens, private keys, connection strings
+4. **Code vulnerabilities** — SQL injection, XSS, command injection (OWASP Top 10)
+5. **Security configuration** — hooks, permissions, MCP settings
+6. **MCP tool schemas** — prompt injection in tool definitions
 
 ### Claude Code Hooks
 
@@ -751,31 +771,43 @@ app = create_authenticated_app()
 
 ## GitHub Action
 
+Add comprehensive security scanning to any project in 3 lines:
+
 ```yaml
-# Full security suite — run all scans in CI
+# .github/workflows/security.yml — one-step comprehensive scan
+- uses: actions/checkout@v4
 - uses: MaxwellCalkin/sentinel-ai@main
   with:
-    dep-scan: "true"              # Supply chain attack detection
-    claudemd-scan: "true"         # CLAUDE.md injection vector detection
-    audit: "true"                 # Security configuration audit
+    project-scan: "true"    # Runs ALL scanners: deps, secrets, CLAUDE.md, code, MCP, audit
+    block-on: high           # Fail PR if high/critical risk found
+```
+
+Or use individual scans for fine-grained control:
+
+```yaml
+# Supply chain attack detection
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    dep-scan: "true"
+    block-on: critical
+
+# Hardcoded secrets & API keys
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    secrets-scan: "true"
+    block-on: critical
+
+# CLAUDE.md injection vector detection
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    claudemd-scan: "true"
     block-on: high
 
-# Scan PR body for safety issues
+# OWASP code scan + GitHub Code Scanning integration
 - uses: MaxwellCalkin/sentinel-ai@main
   with:
-    text: ${{ github.event.pull_request.body }}
-    block-on: high
-
-# Scan generated code for OWASP vulnerabilities + SARIF upload
-- uses: MaxwellCalkin/sentinel-ai@main
-  with:
-    code-scan: src/generated_output.py
+    code-scan: src/app.py
     upload-sarif: "true"
-
-# Validate MCP tool schemas for injection vectors
-- uses: MaxwellCalkin/sentinel-ai@main
-  with:
-    mcp-validate: mcp-tools.json
 ```
 
 ### SARIF Output (GitHub Code Scanning)
