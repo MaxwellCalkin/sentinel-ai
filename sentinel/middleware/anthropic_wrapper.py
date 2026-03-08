@@ -88,6 +88,25 @@ def guarded_message(
             elif output_scan.redacted_text:
                 result["redacted_output"] = output_scan.redacted_text
 
+    # Scan tool_use blocks in the response
+    if scan_output:
+        from sentinel.scanners.tool_use import ToolUseScanner
+        tool_scanner = ToolUseScanner()
+        tool_findings = []
+        for block in response.content:
+            if hasattr(block, "type") and block.type == "tool_use":
+                findings = tool_scanner.scan_tool_call(
+                    block.name, block.input if hasattr(block, "input") else {}
+                )
+                tool_findings.extend(findings)
+        if tool_findings:
+            result["tool_findings"] = tool_findings
+            from sentinel.core import RiskLevel
+            max_risk = max(f.risk for f in tool_findings)
+            if max_risk >= RiskLevel.HIGH:
+                result["blocked"] = True
+                result["block_reason"] = "Tool call blocked by Sentinel safety scan"
+
     return result
 
 
@@ -143,5 +162,23 @@ async def guarded_message_async(
                 result["block_reason"] = "Output blocked by Sentinel safety scan"
             elif output_scan.redacted_text:
                 result["redacted_output"] = output_scan.redacted_text
+
+    if scan_output:
+        from sentinel.scanners.tool_use import ToolUseScanner
+        tool_scanner = ToolUseScanner()
+        tool_findings = []
+        for block in response.content:
+            if hasattr(block, "type") and block.type == "tool_use":
+                findings = tool_scanner.scan_tool_call(
+                    block.name, block.input if hasattr(block, "input") else {}
+                )
+                tool_findings.extend(findings)
+        if tool_findings:
+            result["tool_findings"] = tool_findings
+            from sentinel.core import RiskLevel
+            max_risk = max(f.risk for f in tool_findings)
+            if max_risk >= RiskLevel.HIGH:
+                result["blocked"] = True
+                result["block_reason"] = "Tool call blocked by Sentinel safety scan"
 
     return result
