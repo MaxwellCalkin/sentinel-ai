@@ -19,7 +19,7 @@ async def test_health(app):
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
-        assert len(data["scanners"]) == 6
+        assert len(data["scanners"]) == 7
 
 
 @pytest.mark.asyncio

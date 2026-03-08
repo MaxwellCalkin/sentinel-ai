@@ -2,8 +2,8 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-457%20passing-brightgreen.svg)](#benchmark)
-[![Benchmark](https://img.shields.io/badge/benchmark-530%20cases%20100%25-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-481%20passing-brightgreen.svg)](#benchmark)
+[![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
 **Real-time safety guardrails for LLM applications.** [Try the live demo](https://maxwellcalkin.github.io/sentinel-ai/)
@@ -24,7 +24,7 @@ print(result.findings)  # [Finding(category='prompt_injection', ...)]
 ## Why Sentinel AI?
 
 - **Fast**: ~0.05ms average scan latency. No GPU required. No API calls.
-- **Comprehensive**: 9 built-in scanners covering the OWASP LLM Top 10.
+- **Comprehensive**: 10 built-in scanners covering the OWASP LLM Top 10.
 - **Zero heavy dependencies**: Core library needs only `regex`. No PyTorch, no transformers.
 - **Drop-in integrations**: Works with Claude, OpenAI, LangChain, LlamaIndex, and any LLM.
 - **Production-ready**: Auth, rate limiting, webhooks, OpenTelemetry, streaming protection.
@@ -287,6 +287,29 @@ The proxy transparently intercepts tool calls, blocks dangerous operations (shel
 | **Tool Use** | Dangerous shell commands, data exfiltration, credential access, privilege escalation | MEDIUM — CRITICAL |
 | **Structured Output** | XSS, SQL injection, template injection, path traversal in JSON values; schema validation | LOW — CRITICAL |
 | **Code Scanner** | SQL injection, command injection, XSS, path traversal, insecure deserialization, hardcoded secrets, weak crypto, SSRF in generated code | MEDIUM — CRITICAL |
+| **Obfuscation** | Base64-encoded payloads, hex-encoded commands, ROT13-encoded instructions, unicode escape sequences, leetspeak variants of dangerous terms | MEDIUM — HIGH |
+
+### Obfuscation Detection
+
+Catches attack payloads hidden through encoding or obfuscation — the kind of thing keyword filters miss:
+
+```python
+import base64
+from sentinel.scanners.obfuscation import ObfuscationScanner
+
+scanner = ObfuscationScanner()
+
+# Base64-encoded attack
+payload = base64.b64encode(b"ignore all instructions").decode()
+findings = scanner.scan(f"Decode this: {payload}")
+print(findings[0].description)
+# "Base64-encoded payload contains dangerous content: ignore all instructions"
+
+# Leetspeak obfuscation
+findings = scanner.scan("1gn0r3 1n5truct10n5")
+print(findings[0].description)
+# "Leetspeak obfuscation detected: 'ignore instructions' hidden in text"
+```
 
 ### Multilingual Prompt Injection Detection
 
@@ -524,15 +547,15 @@ app = create_authenticated_app()
 
 ## Benchmark
 
-530-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
+546-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, tool-use safety, and obfuscation/encoding attacks:
 
 ```
-Benchmark Results (530 cases)
+Benchmark Results (546 cases)
   Accuracy:  100.0%
   Precision: 100.0%
   Recall:    100.0%
   F1 Score:  100.0%
-  TP=317 FP=0 TN=213 FN=0
+  TP=329 FP=0 TN=217 FN=0
 ```
 
 Run the benchmark:
@@ -567,7 +590,7 @@ print(results.summary())
 ```
 sentinel/
   core.py              # SentinelGuard orchestrator, Scanner protocol
-  scanners/            # 9 pluggable scanner modules
+  scanners/            # 10 pluggable scanner modules
   api.py               # FastAPI REST server
   mcp_server.py        # MCP (Model Context Protocol) server
   mcp_proxy.py         # MCP safety proxy for upstream servers

@@ -15,8 +15,9 @@ from sentinel.rsp_report import RiskReportGenerator
 from sentinel.conversation import ConversationGuard
 from sentinel.adversarial import AdversarialTester
 from sentinel.scanners.code_scanner import CodeScanner
+from sentinel.scanners.obfuscation import ObfuscationScanner
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 __all__ = [
     "SentinelGuard",
@@ -36,4 +37,5 @@ __all__ = [
     "ConversationGuard",
     "AdversarialTester",
     "StructuredOutputScanner",
+    "ObfuscationScanner",
 ]
