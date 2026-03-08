@@ -428,6 +428,23 @@ results = run_benchmark()
 print(results.summary())
 ```
 
+## Comparison
+
+| Feature | Sentinel AI | NeMo Guardrails | LLM Guard | Guardrails AI |
+|---------|:-----------:|:---------------:|:---------:|:-------------:|
+| Scan latency | **~0.05ms** | 100ms+ | 50ms+ | varies |
+| GPU required | **No** | Optional | Yes | Optional |
+| Core dependencies | **1** (`regex`) | 10+ | 10+ | 5+ |
+| Prompt injection | Yes | Yes | Yes | Yes |
+| PII detection + redact | Yes | No | Yes | Yes |
+| Tool-use safety | **Yes** | No | No | No |
+| Structured output validation | **Yes** | No | No | Yes |
+| Claude Code hooks | **Yes** | No | No | No |
+| MCP server | **Yes** | No | No | No |
+| Adversarial red-teaming | **Yes** | No | No | No |
+| Multi-turn tracking | **Yes** | Yes | No | No |
+| Streaming protection | Yes | No | No | No |
+
 ## Architecture
 
 ```
