@@ -23,8 +23,9 @@ from sentinel.compliance import ComplianceMapper, Framework, ComplianceStatus
 from sentinel.agent_monitor import AgentMonitor
 from sentinel.threat_intel import ThreatFeed, ThreatCategory, Severity
 from sentinel.attack_chain import AttackChainDetector
+from sentinel.session_audit import SessionAudit, AuditEntry
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
 
 __all__ = [
     "SentinelGuard",
@@ -60,4 +61,6 @@ __all__ = [
     "ThreatCategory",
     "Severity",
     "AttackChainDetector",
+    "SessionAudit",
+    "AuditEntry",
 ]

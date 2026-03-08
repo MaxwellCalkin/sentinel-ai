@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-1079%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-1107%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -865,6 +865,41 @@ for chain in detector.active_chains():
 
 Detects 6 chain patterns: recon→credential→exfiltrate, credential→exfiltrate, escalation→destruction, context poisoning→escalation, recon→escalation→persistence, and context poisoning→credential→exfiltration.
 
+### Session Audit Trail
+
+Tamper-evident audit logging for agentic AI sessions — every tool call, blocked action, and anomaly is recorded with SHA-256 hash chaining for integrity verification. Export to JSON for SIEM integration (Splunk, Datadog, Elastic) and compliance reporting (SOC 2, ISO 27001):
+
+```python
+from sentinel.session_audit import SessionAudit
+
+audit = SessionAudit(session_id="session-123", user_id="user@org.com")
+
+# Log each tool call with its safety verdict
+audit.log_tool_call("bash", {"command": "ls src/"}, risk="none")
+audit.log_tool_call("read_file", {"path": ".env"}, risk="high",
+                    findings=["credential_access"])
+audit.log_blocked("bash", {"command": "rm -rf /"}, reason="destructive_command")
+audit.log_anomaly("Runaway loop detected", risk="medium")
+
+# Verify no entries were tampered with
+assert audit.verify_integrity()  # True
+
+# Export for SIEM / compliance
+report = audit.export()
+print(report["summary"]["total_calls"])     # 4
+print(report["summary"]["blocked_calls"])   # 1
+print(report["summary"]["risk_level"])      # "high"
+
+# JSON export for log aggregation
+json_str = audit.export_json()
+
+# Risk timeline for visualization
+timeline = audit.risk_timeline()
+# [{"timestamp": ..., "risk": "none", ...}, {"risk": "high", ...}, ...]
+```
+
+Features: hash-chained entries (tamper detection), integrity verification, JSON/SIEM export, risk timeline, finding categorization, tool usage breakdown, session metadata (user, agent, model), and duration tracking.
+
 ## Enterprise Features
 
 ### Policy Engine
@@ -1046,6 +1081,7 @@ sentinel/
   rsp_report.py        # RSP v3.0-aligned risk report generator
   conversation.py      # Multi-turn conversation safety tracking
   adversarial.py       # Adversarial robustness testing / red-teaming
+  session_audit.py     # Tamper-evident session audit trail (SIEM export)
   client.py            # Python SDK client (sync + async)
   middleware/          # Claude, Claude Agent SDK, OpenAI, LangChain, LlamaIndex
   benchmarks.py        # Precision/recall benchmark suite

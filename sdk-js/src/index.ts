@@ -1685,4 +1685,265 @@ export class AttackChainDetector {
   }
 }
 
+// --- Session Audit Trail ---
+
+export type AuditRiskLevel = 'none' | 'low' | 'medium' | 'high' | 'critical';
+export type AuditEventType = 'tool_call' | 'blocked' | 'anomaly' | 'chain_detected';
+
+const AUDIT_RISK_ORDER: AuditRiskLevel[] = ['none', 'low', 'medium', 'high', 'critical'];
+
+export interface AuditEntry {
+  timestamp: number;
+  entryId: string;
+  eventType: AuditEventType;
+  toolName: string;
+  arguments: Record<string, unknown>;
+  risk: AuditRiskLevel;
+  findings: string[];
+  reason: string;
+  metadata: Record<string, unknown>;
+  prevHash: string;
+  entryHash: string;
+}
+
+function simpleUuid(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+async function sha256Hex(data: string): Promise<string> {
+  if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
+    const buf = new TextEncoder().encode(data);
+    const hash = await globalThis.crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  }
+  // Fallback: simple hash for environments without crypto
+  let h = 0;
+  for (let i = 0; i < data.length; i++) {
+    h = ((h << 5) - h + data.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(16).padStart(16, '0').slice(0, 16);
+}
+
+function hashEntrySync(entry: AuditEntry, prevHash: string): string {
+  const data = `${entry.timestamp}:${entry.entryId}:${entry.eventType}:${entry.toolName}:${entry.risk}:${prevHash}`;
+  // Sync fallback hash (djb2-based)
+  let h = 5381;
+  for (let i = 0; i < data.length; i++) {
+    h = ((h << 5) + h + data.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(16).padStart(16, '0').slice(0, 16);
+}
+
+export interface AuditExport {
+  version: string;
+  sessionId: string;
+  userId: string;
+  agentId: string;
+  model: string;
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+  integrityVerified: boolean;
+  summary: {
+    totalCalls: number;
+    toolCalls: number;
+    blockedCalls: number;
+    anomaliesDetected: number;
+    chainsDetected: number;
+    riskLevel: AuditRiskLevel;
+    toolCounts: Record<string, number>;
+    findingCategories: Record<string, number>;
+  };
+  entries: Array<{
+    timestamp: number;
+    entryId: string;
+    eventType: AuditEventType;
+    toolName: string;
+    arguments: Record<string, unknown>;
+    risk: AuditRiskLevel;
+    findings: string[];
+    reason: string;
+    metadata: Record<string, unknown>;
+    entryHash: string;
+  }>;
+}
+
+export class SessionAudit {
+  readonly sessionId: string;
+  readonly userId: string;
+  readonly agentId: string;
+  readonly model: string;
+  readonly startTime: number;
+  private _entries: AuditEntry[] = [];
+  private _prevHash = '0000000000000000';
+
+  constructor(opts?: {
+    sessionId?: string;
+    userId?: string;
+    agentId?: string;
+    model?: string;
+  }) {
+    this.sessionId = opts?.sessionId ?? simpleUuid();
+    this.userId = opts?.userId ?? '';
+    this.agentId = opts?.agentId ?? '';
+    this.model = opts?.model ?? '';
+    this.startTime = Date.now() / 1000;
+  }
+
+  get totalEntries(): number { return this._entries.length; }
+
+  get entries(): AuditEntry[] { return [...this._entries]; }
+
+  logToolCall(
+    toolName: string,
+    args: Record<string, unknown>,
+    opts?: { risk?: AuditRiskLevel; findings?: string[]; metadata?: Record<string, unknown> },
+  ): AuditEntry {
+    return this._addEntry('tool_call', toolName, args, opts?.risk ?? 'none', '', opts?.findings, opts?.metadata);
+  }
+
+  logBlocked(
+    toolName: string,
+    args: Record<string, unknown>,
+    reason: string,
+    opts?: { risk?: AuditRiskLevel; findings?: string[]; metadata?: Record<string, unknown> },
+  ): AuditEntry {
+    return this._addEntry('blocked', toolName, args, opts?.risk ?? 'critical', reason, opts?.findings, opts?.metadata);
+  }
+
+  logAnomaly(
+    description: string,
+    opts?: { risk?: AuditRiskLevel; toolName?: string; metadata?: Record<string, unknown> },
+  ): AuditEntry {
+    return this._addEntry('anomaly', opts?.toolName ?? '', {}, opts?.risk ?? 'high', description, undefined, opts?.metadata);
+  }
+
+  logChain(
+    chainName: string,
+    chainDescription: string,
+    opts?: { risk?: AuditRiskLevel; stages?: string[]; metadata?: Record<string, unknown> },
+  ): AuditEntry {
+    return this._addEntry(
+      'chain_detected', '', {}, opts?.risk ?? 'critical', chainDescription,
+      opts?.stages, { chain_name: chainName, ...(opts?.metadata ?? {}) },
+    );
+  }
+
+  verifyIntegrity(): boolean {
+    let prev = '0000000000000000';
+    for (const entry of this._entries) {
+      const expected = hashEntrySync(entry, prev);
+      if (entry.entryHash !== expected) return false;
+      prev = entry.entryHash;
+    }
+    return true;
+  }
+
+  export(): AuditExport {
+    const now = Date.now() / 1000;
+    const total = this._entries.length;
+    const blocked = this._entries.filter(e => e.eventType === 'blocked').length;
+    const anomalies = this._entries.filter(e => e.eventType === 'anomaly').length;
+    const chains = this._entries.filter(e => e.eventType === 'chain_detected').length;
+    const toolCalls = this._entries.filter(e => e.eventType === 'tool_call').length;
+
+    let maxRisk: AuditRiskLevel = 'none';
+    for (const e of this._entries) {
+      if (AUDIT_RISK_ORDER.indexOf(e.risk) > AUDIT_RISK_ORDER.indexOf(maxRisk)) {
+        maxRisk = e.risk;
+      }
+    }
+
+    const toolCounts: Record<string, number> = {};
+    for (const e of this._entries) {
+      if (e.toolName) toolCounts[e.toolName] = (toolCounts[e.toolName] ?? 0) + 1;
+    }
+
+    const findingCategories: Record<string, number> = {};
+    for (const e of this._entries) {
+      for (const f of e.findings) {
+        findingCategories[f] = (findingCategories[f] ?? 0) + 1;
+      }
+    }
+
+    return {
+      version: '1.0',
+      sessionId: this.sessionId,
+      userId: this.userId,
+      agentId: this.agentId,
+      model: this.model,
+      startTime: this.startTime,
+      endTime: now,
+      durationSeconds: Math.round((now - this.startTime) * 100) / 100,
+      integrityVerified: this.verifyIntegrity(),
+      summary: {
+        totalCalls: total,
+        toolCalls,
+        blockedCalls: blocked,
+        anomaliesDetected: anomalies,
+        chainsDetected: chains,
+        riskLevel: maxRisk,
+        toolCounts,
+        findingCategories,
+      },
+      entries: this._entries.map(e => ({
+        timestamp: e.timestamp,
+        entryId: e.entryId,
+        eventType: e.eventType,
+        toolName: e.toolName,
+        arguments: e.arguments,
+        risk: e.risk,
+        findings: e.findings,
+        reason: e.reason,
+        metadata: e.metadata,
+        entryHash: e.entryHash,
+      })),
+    };
+  }
+
+  exportJson(indent = 2): string {
+    return JSON.stringify(this.export(), null, indent);
+  }
+
+  riskTimeline(): Array<{ timestamp: number; risk: AuditRiskLevel; eventType: AuditEventType; toolName: string }> {
+    return this._entries.map(e => ({
+      timestamp: e.timestamp,
+      risk: e.risk,
+      eventType: e.eventType,
+      toolName: e.toolName,
+    }));
+  }
+
+  private _addEntry(
+    eventType: AuditEventType,
+    toolName: string,
+    args: Record<string, unknown>,
+    risk: AuditRiskLevel,
+    reason: string,
+    findings?: string[],
+    metadata?: Record<string, unknown>,
+  ): AuditEntry {
+    const entry: AuditEntry = {
+      timestamp: Date.now() / 1000,
+      entryId: simpleUuid().slice(0, 8),
+      eventType,
+      toolName,
+      arguments: args,
+      risk,
+      findings: findings ?? [],
+      reason,
+      metadata: metadata ?? {},
+      prevHash: this._prevHash,
+      entryHash: '',
+    };
+    entry.entryHash = hashEntrySync(entry, this._prevHash);
+    this._prevHash = entry.entryHash;
+    this._entries.push(entry);
+    return entry;
+  }
+}
+
 export default SentinelGuard;

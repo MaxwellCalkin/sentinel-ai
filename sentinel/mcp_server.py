@@ -54,7 +54,7 @@ def handle_initialize(params: dict) -> dict:
         },
         "serverInfo": {
             "name": "sentinel-ai",
-            "version": "0.11.0",
+            "version": "0.12.0",
         },
     }
 
