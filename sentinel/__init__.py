@@ -44,6 +44,7 @@ from sentinel.openai_wrapper import (
     SafeChatResponse,
 )
 from sentinel.token_budget import TokenBudget, TokenUsage, BudgetExceededError, estimate_cost
+from sentinel.data_classifier import DataClassifier, DataCategory, ClassificationResult
 
 __version__ = "0.17.0"
 
@@ -113,4 +114,7 @@ __all__ = [
     "TokenUsage",
     "BudgetExceededError",
     "estimate_cost",
+    "DataClassifier",
+    "DataCategory",
+    "ClassificationResult",
 ]
