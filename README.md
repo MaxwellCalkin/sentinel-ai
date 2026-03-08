@@ -732,23 +732,30 @@ app = create_authenticated_app()
 ## GitHub Action
 
 ```yaml
+# Full security suite — run all scans in CI
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    dep-scan: "true"              # Supply chain attack detection
+    claudemd-scan: "true"         # CLAUDE.md injection vector detection
+    audit: "true"                 # Security configuration audit
+    block-on: high
+
 # Scan PR body for safety issues
 - uses: MaxwellCalkin/sentinel-ai@main
   with:
     text: ${{ github.event.pull_request.body }}
     block-on: high
 
-# Scan generated code for OWASP vulnerabilities
-- uses: MaxwellCalkin/sentinel-ai@main
-  with:
-    code-scan: src/generated_output.py
-    block-on: high
-
-# Upload results to GitHub Code Scanning (Security tab)
+# Scan generated code for OWASP vulnerabilities + SARIF upload
 - uses: MaxwellCalkin/sentinel-ai@main
   with:
     code-scan: src/generated_output.py
     upload-sarif: "true"
+
+# Validate MCP tool schemas for injection vectors
+- uses: MaxwellCalkin/sentinel-ai@main
+  with:
+    mcp-validate: mcp-tools.json
 ```
 
 ### SARIF Output (GitHub Code Scanning)

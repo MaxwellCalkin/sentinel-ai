@@ -1,5 +1,5 @@
 name: "Sentinel AI Safety Scan"
-description: "Scan LLM prompts, outputs, and generated code for safety issues in CI/CD"
+description: "Comprehensive safety scanning for LLM apps: prompt injection, PII, code vulnerabilities, supply chain attacks, CLAUDE.md injection, MCP schema validation"
 author: "Sentinel AI"
 branding:
   icon: "shield"
@@ -15,6 +15,21 @@ inputs:
   code-scan:
     description: "Path to source file to scan for OWASP vulnerabilities"
     required: false
+  dep-scan:
+    description: "Scan dependency files for supply chain attacks (true to auto-detect, or path to file)"
+    required: false
+    default: "false"
+  claudemd-scan:
+    description: "Scan CLAUDE.md and project instruction files for injection vectors (true to auto-detect, or path to file)"
+    required: false
+    default: "false"
+  mcp-validate:
+    description: "Path to JSON file containing MCP tool definitions to validate"
+    required: false
+  audit:
+    description: "Run security configuration audit (true/false)"
+    required: false
+    default: "false"
   format:
     description: "Output format: text, json, or sarif"
     required: false
@@ -30,7 +45,7 @@ inputs:
 
 outputs:
   safe:
-    description: "Whether the text passed safety checks"
+    description: "Whether the scan passed safety checks"
     value: ${{ steps.scan.outputs.safe }}
   risk:
     description: "Overall risk level"
@@ -53,7 +68,44 @@ runs:
       id: scan
       shell: bash
       run: |
+        EXIT_CODE=0
+        OVERALL_RISK="none"
+        ALL_FINDINGS="[]"
+
+        update_risk() {
+          local new_risk="$1"
+          local levels="none low medium high critical"
+          local new_idx=$(echo $levels | tr ' ' '\n' | grep -n "^${new_risk}$" | cut -d: -f1)
+          local cur_idx=$(echo $levels | tr ' ' '\n' | grep -n "^${OVERALL_RISK}$" | cut -d: -f1)
+          if [ "${new_idx:-0}" -gt "${cur_idx:-0}" ]; then
+            OVERALL_RISK="$new_risk"
+          fi
+        }
+
+        # Text scan
+        if [ -n "${{ inputs.text }}" ]; then
+          echo "::group::Sentinel AI: Text Scan"
+          RESULT=$(sentinel scan "${{ inputs.text }}" --format json)
+          RISK=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f\"::warning ::{f['description']}\") for f in d.get('findings',[])]"
+          echo "redacted=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('redacted_text',''))")" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
+        fi
+
+        # File scan
+        if [ -n "${{ inputs.file }}" ]; then
+          echo "::group::Sentinel AI: File Scan"
+          RESULT=$(sentinel scan --file "${{ inputs.file }}" --format json)
+          RISK=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); [print(f\"::warning file=${{ inputs.file }}::{f['description']}\") for f in d.get('findings',[])]"
+          echo "::endgroup::"
+        fi
+
+        # Code scan
         if [ -n "${{ inputs.code-scan }}" ]; then
+          echo "::group::Sentinel AI: Code Vulnerability Scan"
           RESULT=$(sentinel code-scan --file "${{ inputs.code-scan }}" --format json)
           RISK="none"
           if echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if any(f['risk']=='critical' for f in d) else 1)" 2>/dev/null; then
@@ -63,30 +115,84 @@ runs:
           elif echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if len(d)>0 else 1)" 2>/dev/null; then
             RISK="medium"
           fi
-          SAFE=$( [ "$RISK" = "none" ] && echo "True" || echo "False" )
-          echo "safe=$SAFE" >> $GITHUB_OUTPUT
-          echo "risk=$RISK" >> $GITHUB_OUTPUT
-          echo "findings=$RESULT" >> $GITHUB_OUTPUT
-        elif [ -n "${{ inputs.file }}" ]; then
-          RESULT=$(sentinel scan --file "${{ inputs.file }}" --format json)
-          echo "safe=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['safe'])")" >> $GITHUB_OUTPUT
-          echo "risk=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")" >> $GITHUB_OUTPUT
-          echo "findings=$(echo "$RESULT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('findings',[])))")" >> $GITHUB_OUTPUT
-          echo "redacted=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('redacted_text',''))")" >> $GITHUB_OUTPUT
-        elif [ -n "${{ inputs.text }}" ]; then
-          RESULT=$(sentinel scan "${{ inputs.text }}" --format json)
-          echo "safe=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['safe'])")" >> $GITHUB_OUTPUT
-          echo "risk=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin)['risk'])")" >> $GITHUB_OUTPUT
-          echo "findings=$(echo "$RESULT" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('findings',[])))")" >> $GITHUB_OUTPUT
-          echo "redacted=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('redacted_text',''))")" >> $GITHUB_OUTPUT
-        else
-          echo "Error: provide 'text', 'file', or 'code-scan' input"
-          exit 1
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; [print(f\"::warning file=${{ inputs.code-scan }},line={f.get('line',1)}::{f['description']}\") for f in json.load(sys.stdin)]"
+          echo "::endgroup::"
         fi
+
+        # Dependency scan
+        if [ "${{ inputs.dep-scan }}" != "false" ]; then
+          echo "::group::Sentinel AI: Dependency Supply Chain Scan"
+          if [ "${{ inputs.dep-scan }}" = "true" ]; then
+            RESULT=$(sentinel dep-scan --format json 2>/dev/null || echo "[]")
+          else
+            RESULT=$(sentinel dep-scan --file "${{ inputs.dep-scan }}" --format json 2>/dev/null || echo "[]")
+          fi
+          RISK=$(echo "$RESULT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+risks = [f['risk'] for f in d]
+order = ['none','low','medium','high','critical']
+print(max(risks, key=lambda r: order.index(r)) if risks else 'none')
+" 2>/dev/null || echo "none")
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; [print(f\"::warning file={f.get('file','')},line={f.get('line',1)}::{f['description']}\") for f in json.load(sys.stdin)]" 2>/dev/null
+          echo "::endgroup::"
+        fi
+
+        # CLAUDE.md scan
+        if [ "${{ inputs.claudemd-scan }}" != "false" ]; then
+          echo "::group::Sentinel AI: CLAUDE.md Injection Scan"
+          if [ "${{ inputs.claudemd-scan }}" = "true" ]; then
+            RESULT=$(sentinel claudemd-scan --format json 2>/dev/null || echo "[]")
+          else
+            RESULT=$(sentinel claudemd-scan --file "${{ inputs.claudemd-scan }}" --format json 2>/dev/null || echo "[]")
+          fi
+          RISK=$(echo "$RESULT" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+if isinstance(d, list) and d:
+    all_findings = [f for r in d for f in r.get('findings',[])]
+    if all_findings:
+        order = ['none','low','medium','high','critical']
+        print(max((f['risk'] for f in all_findings), key=lambda r: order.index(r)))
+    else:
+        print('none')
+else:
+    print('none')
+" 2>/dev/null || echo "none")
+          update_risk "$RISK"
+          echo "::endgroup::"
+        fi
+
+        # MCP schema validation
+        if [ -n "${{ inputs.mcp-validate }}" ]; then
+          echo "::group::Sentinel AI: MCP Tool Schema Validation"
+          RESULT=$(sentinel mcp-validate --file "${{ inputs.mcp-validate }}" --format json 2>/dev/null || echo '{"safe":true,"risk":"none","findings":[]}')
+          RISK=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('risk','none'))")
+          update_risk "$RISK"
+          echo "$RESULT" | python3 -c "import sys,json; [print(f\"::warning ::{f['description']} (tool: {f.get('tool','')})\") for f in json.load(sys.stdin).get('findings',[])]" 2>/dev/null
+          echo "::endgroup::"
+        fi
+
+        # Security audit
+        if [ "${{ inputs.audit }}" = "true" ]; then
+          echo "::group::Sentinel AI: Security Configuration Audit"
+          sentinel audit || true
+          RESULT=$(sentinel audit --format json 2>/dev/null || echo '{"score":100,"critical":0}')
+          CRIT=$(echo "$RESULT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('critical',0))")
+          if [ "$CRIT" -gt 0 ]; then
+            update_risk "high"
+          fi
+          echo "::endgroup::"
+        fi
+
+        SAFE=$( [ "$OVERALL_RISK" = "none" ] || [ "$OVERALL_RISK" = "low" ] && echo "True" || echo "False" )
+        echo "safe=$SAFE" >> $GITHUB_OUTPUT
+        echo "risk=$OVERALL_RISK" >> $GITHUB_OUTPUT
 
     - name: Generate SARIF
       if: inputs.upload-sarif == 'true'
-      id: sarif
       shell: bash
       run: |
         if [ -n "${{ inputs.code-scan }}" ]; then
@@ -112,7 +218,7 @@ runs:
         LEVELS="none low medium high critical"
         RISK_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${RISK}$" | cut -d: -f1)
         THRESH_IDX=$(echo $LEVELS | tr ' ' '\n' | grep -n "^${THRESHOLD}$" | cut -d: -f1)
-        if [ "$RISK_IDX" -ge "$THRESH_IDX" ]; then
+        if [ "${RISK_IDX:-0}" -ge "${THRESH_IDX:-0}" ]; then
           echo "::error::Sentinel AI: Risk level '$RISK' meets or exceeds threshold '$THRESHOLD'"
           exit 1
         fi

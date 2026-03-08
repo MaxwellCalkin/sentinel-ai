@@ -1,0 +1,46 @@
+# Sentinel AI — Full Security Pipeline
+# Add this to .github/workflows/security.yml for comprehensive CI/CD safety scanning
+
+name: Security Scan
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  security-events: write  # Required for SARIF upload
+  contents: read
+
+jobs:
+  sentinel-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1. Scan dependencies for supply chain attacks
+      - name: Dependency Scan
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          dep-scan: "true"
+          block-on: critical
+
+      # 2. Scan CLAUDE.md for injection vectors
+      - name: CLAUDE.md Injection Scan
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          claudemd-scan: "true"
+          block-on: high
+
+      # 3. Audit project security configuration
+      - name: Security Audit
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          audit: "true"
+
+      # 4. Scan source code for OWASP vulnerabilities + upload to Security tab
+      - name: Code Vulnerability Scan
+        uses: MaxwellCalkin/sentinel-ai@main
+        with:
+          code-scan: src/app.py  # adjust path
+          upload-sarif: "true"
+          block-on: high
