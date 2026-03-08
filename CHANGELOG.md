@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.3] - 2026-03-08
+
+### Added
+- **MCP Tool Schema Validator** — `sentinel mcp-validate` detects injection vectors in MCP tool definitions
+  - Prompt injection, authority impersonation, data exfiltration in tool descriptions
+  - Suspicious parameter defaults (URLs, shell commands)
+  - Hidden content (HTML comments, zero-width characters)
+  - Nested schema validation (properties, anyOf, items)
+  - 40 new tests
+- Test count: 687 → 727
+
 ## [0.8.2] - 2026-03-08
 
 ### Added

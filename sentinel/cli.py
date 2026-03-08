@@ -412,6 +412,61 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0 if report.critical_count == 0 else 1
 
 
+def cmd_mcp_validate(args: argparse.Namespace) -> int:
+    """Validate MCP tool schemas for injection vectors."""
+    from sentinel.mcp_schema_validator import validate_mcp_tools
+
+    if args.stdin:
+        raw = sys.stdin.read()
+    elif args.file:
+        raw = Path(args.file).read_text(encoding="utf-8")
+    else:
+        print("Error: provide --file or --stdin", file=sys.stderr)
+        return 1
+
+    import json as json_module
+    try:
+        data = json_module.loads(raw)
+    except json_module.JSONDecodeError as e:
+        print(f"Error: invalid JSON — {e}", file=sys.stderr)
+        return 1
+
+    # Accept either a list of tools or a dict with a "tools" key
+    if isinstance(data, dict) and "tools" in data:
+        tools = data["tools"]
+    elif isinstance(data, list):
+        tools = data
+    else:
+        print("Error: expected a JSON array of tools or an object with a 'tools' key", file=sys.stderr)
+        return 1
+
+    report = validate_mcp_tools(tools)
+
+    if args.format == "json":
+        print(json.dumps({
+            "tools_scanned": report.tools_scanned,
+            "safe": report.safe,
+            "risk": report.risk.value,
+            "critical": report.critical_count,
+            "high": report.high_count,
+            "findings": [
+                {
+                    "category": f.category,
+                    "description": f.description,
+                    "risk": f.risk.value,
+                    "tool": f.metadata.get("tool", ""),
+                    "field": f.metadata.get("field", ""),
+                    "match": f.metadata.get("match", ""),
+                }
+                for f in report.findings
+            ],
+        }, indent=2))
+    else:
+        print(report.summary())
+
+    return 1 if not report.safe else 0
+
+
 def cmd_dep_scan(args: argparse.Namespace) -> int:
     """Scan dependency files for supply chain attack patterns."""
     from sentinel.scanners.dependency_scanner import DependencyScanner
@@ -493,7 +548,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="sentinel",
         description="Sentinel AI - Real-time safety guardrails for LLMs",
     )
-    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.2")
+    parser.add_argument("--version", action="version", version="sentinel-ai 0.8.3")
     subparsers = parser.add_subparsers(dest="command")
 
     # scan command
@@ -587,6 +642,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Upstream MCP server command (after --)",
     )
 
+    # mcp-validate command
+    mv_parser = subparsers.add_parser(
+        "mcp-validate", help="Validate MCP tool schemas for injection vectors"
+    )
+    mv_parser.add_argument("--file", "-f", help="JSON file containing MCP tool definitions")
+    mv_parser.add_argument("--stdin", action="store_true", help="Read tool definitions from stdin")
+    mv_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+
     # proxy command (LLM API firewall)
     fw_parser = subparsers.add_parser(
         "proxy", help="Run as a transparent LLM API firewall (reverse proxy)"
@@ -677,6 +742,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_code_scan(args)
     elif args.command == "mcp-proxy":
         return cmd_mcp_proxy(args)
+    elif args.command == "mcp-validate":
+        return cmd_mcp_validate(args)
     elif args.command == "proxy":
         return cmd_proxy(args)
     elif args.command == "claudemd-scan":

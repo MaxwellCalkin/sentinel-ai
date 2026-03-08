@@ -17,7 +17,7 @@ from sentinel.adversarial import AdversarialTester
 from sentinel.scanners.code_scanner import CodeScanner
 from sentinel.scanners.obfuscation import ObfuscationScanner
 
-__version__ = "0.8.2"
+__version__ = "0.8.3"
 
 __all__ = [
     "SentinelGuard",
