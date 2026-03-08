@@ -47,6 +47,7 @@ from sentinel.token_budget import TokenBudget, TokenUsage, BudgetExceededError, 
 from sentinel.data_classifier import DataClassifier, DataCategory, ClassificationResult
 from sentinel.output_validator import OutputValidator, ValidationResult, ValidationError
 from sentinel.self_heal import StructuredGenerator, GenerationResult
+from sentinel.risk_router import RiskRouter, ModelTier, RouteDecision
 
 __version__ = "0.17.0"
 
@@ -124,4 +125,7 @@ __all__ = [
     "ValidationError",
     "StructuredGenerator",
     "GenerationResult",
+    "RiskRouter",
+    "ModelTier",
+    "RouteDecision",
 ]
