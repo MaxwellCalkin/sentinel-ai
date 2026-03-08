@@ -845,6 +845,10 @@ export class SentinelGuard {
       latencyMs,
     };
   }
+
+  scanBatch(texts: string[]): ScanResult[] {
+    return texts.map(t => this.scan(t));
+  }
 }
 
 // --- Conversation Guard (multi-turn safety) ---
@@ -3947,6 +3951,141 @@ export class EvalRunner {
     }
 
     return lines.join('\n');
+  }
+}
+
+// --- Scan Cache ---
+
+export interface CacheStats {
+  hits: number;
+  misses: number;
+  hitRate: number;
+  size: number;
+  maxsize: number;
+}
+
+export class ScanCache {
+  private guard: SentinelGuard;
+  private maxsize: number;
+  private ttl: number;
+  private cache = new Map<string, { result: ScanResult; ts: number }>();
+  private hits = 0;
+  private misses = 0;
+
+  constructor(guard: SentinelGuard, maxsize = 1024, ttl = 300000) {
+    this.guard = guard;
+    this.maxsize = maxsize;
+    this.ttl = ttl;
+  }
+
+  private key(text: string): string {
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    }
+    return hash.toString(36) + ':' + text.length;
+  }
+
+  scan(text: string): ScanResult {
+    const k = this.key(text);
+    const now = Date.now();
+    const cached = this.cache.get(k);
+    if (cached && now - cached.ts < this.ttl) {
+      this.hits++;
+      return cached.result;
+    }
+    if (cached) this.cache.delete(k);
+
+    const result = this.guard.scan(text);
+    this.cache.set(k, { result, ts: now });
+    this.misses++;
+
+    if (this.cache.size > this.maxsize) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
+    }
+
+    return result;
+  }
+
+  invalidate(text?: string): void {
+    if (text === undefined) {
+      this.cache.clear();
+    } else {
+      this.cache.delete(this.key(text));
+    }
+  }
+
+  get stats(): CacheStats {
+    const total = this.hits + this.misses;
+    return {
+      hits: this.hits,
+      misses: this.misses,
+      hitRate: total > 0 ? this.hits / total : 0,
+      size: this.cache.size,
+      maxsize: this.maxsize,
+    };
+  }
+}
+
+// --- Scan Metrics ---
+
+export interface MetricsSummary {
+  totalScans: number;
+  totalBlocked: number;
+  blockRate: number;
+  totalFindings: number;
+  avgLatencyMs: number;
+  riskDistribution: Record<string, number>;
+  categoryDistribution: Record<string, number>;
+}
+
+export class ScanMetrics {
+  totalScans = 0;
+  totalBlocked = 0;
+  totalFindings = 0;
+  totalLatencyMs = 0;
+  riskCounts: Record<string, number> = {};
+  categoryCounts: Record<string, number> = {};
+
+  record(result: ScanResult): void {
+    this.totalScans++;
+    this.totalLatencyMs += result.latencyMs;
+    this.totalFindings += result.findings.length;
+    this.riskCounts[result.risk] = (this.riskCounts[result.risk] || 0) + 1;
+    if (result.blocked) this.totalBlocked++;
+    for (const f of result.findings) {
+      this.categoryCounts[f.category] = (this.categoryCounts[f.category] || 0) + 1;
+    }
+  }
+
+  get avgLatencyMs(): number {
+    return this.totalScans > 0 ? this.totalLatencyMs / this.totalScans : 0;
+  }
+
+  get blockRate(): number {
+    return this.totalScans > 0 ? this.totalBlocked / this.totalScans : 0;
+  }
+
+  summary(): MetricsSummary {
+    return {
+      totalScans: this.totalScans,
+      totalBlocked: this.totalBlocked,
+      blockRate: Math.round(this.blockRate * 10000) / 10000,
+      totalFindings: this.totalFindings,
+      avgLatencyMs: Math.round(this.avgLatencyMs * 100) / 100,
+      riskDistribution: { ...this.riskCounts },
+      categoryDistribution: { ...this.categoryCounts },
+    };
+  }
+
+  reset(): void {
+    this.totalScans = 0;
+    this.totalBlocked = 0;
+    this.totalFindings = 0;
+    this.totalLatencyMs = 0;
+    this.riskCounts = {};
+    this.categoryCounts = {};
   }
 }
 

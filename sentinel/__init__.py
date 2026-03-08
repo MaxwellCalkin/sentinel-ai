@@ -1,6 +1,6 @@
 """Sentinel AI - Real-time safety guardrails for LLM applications."""
 
-from sentinel.core import SentinelGuard, ScanResult, RiskLevel
+from sentinel.core import SentinelGuard, ScanResult, RiskLevel, ScanCache, ScanMetrics
 from sentinel.scanners.prompt_injection import PromptInjectionScanner
 from sentinel.scanners.pii import PIIScanner
 from sentinel.scanners.harmful_content import HarmfulContentScanner
@@ -30,7 +30,7 @@ from sentinel.guard_policy import GuardPolicy
 from sentinel.claudemd_enforcer import ClaudeMdEnforcer, EnforcedRule, EnforcementVerdict
 from sentinel.evals import EvalRunner, EvalSuite, EvalCase, EvalResult, EvalReport
 
-__version__ = "0.12.1"
+__version__ = "0.15.0"
 
 __all__ = [
     "SentinelGuard",
@@ -81,4 +81,6 @@ __all__ = [
     "EvalCase",
     "EvalResult",
     "EvalReport",
+    "ScanCache",
+    "ScanMetrics",
 ]
