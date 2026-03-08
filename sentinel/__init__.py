@@ -45,6 +45,7 @@ from sentinel.openai_wrapper import (
 )
 from sentinel.token_budget import TokenBudget, TokenUsage, BudgetExceededError, estimate_cost
 from sentinel.data_classifier import DataClassifier, DataCategory, ClassificationResult
+from sentinel.output_validator import OutputValidator, ValidationResult, ValidationError
 
 __version__ = "0.17.0"
 
@@ -117,4 +118,7 @@ __all__ = [
     "DataClassifier",
     "DataCategory",
     "ClassificationResult",
+    "OutputValidator",
+    "ValidationResult",
+    "ValidationError",
 ]
