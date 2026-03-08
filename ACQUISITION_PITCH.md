@@ -29,7 +29,7 @@ Built-in RSP v3.0-aligned risk report generation. Threat domain assessments map 
 | Metric | Value |
 |--------|-------|
 | Scan latency | ~0.05ms average |
-| Benchmark accuracy | 100% (500 cases) |
+| Benchmark accuracy | 100% (530 cases) |
 | Test coverage | 393 tests |
 | Multilingual injection | 12 languages + cross-lingual |
 | Core dependencies | 1 (`regex`) |

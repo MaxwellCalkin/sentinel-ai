@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen.svg)](#benchmark)
-[![Benchmark](https://img.shields.io/badge/benchmark-500%20cases%20100%25-brightgreen.svg)](#benchmark)
+[![Benchmark](https://img.shields.io/badge/benchmark-530%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
 **Real-time safety guardrails for LLM applications.** [Try the live demo](https://maxwellcalkin.github.io/sentinel-ai/)
@@ -254,7 +254,7 @@ Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_repor
 
 | Scanner | Detects | Risk Levels |
 |---------|---------|-------------|
-| **Prompt Injection** | Instruction overrides, role injection, delimiter attacks, jailbreaks, prompt extraction, **multilingual (12 languages)**, cross-lingual injection | LOW — CRITICAL |
+| **Prompt Injection** | Instruction overrides, role injection, delimiter attacks, jailbreaks, prompt extraction, **multilingual (12 languages)**, cross-lingual injection, **Claude Code attack vectors** (HTML comment injection, authority impersonation, base URL exfil, config injection) | LOW — CRITICAL |
 | **PII Detection** | Emails, SSNs, credit cards (Luhn-validated), phone numbers, API keys, tokens | LOW — CRITICAL |
 | **Harmful Content** | Weapons/drug synthesis, self-harm, hacking, fraud instructions | HIGH — CRITICAL |
 | **Hallucination** | Fabricated citations, false confidence markers, self-contradictions | LOW — MEDIUM |
@@ -459,15 +459,15 @@ app = create_authenticated_app()
 
 ## Benchmark
 
-500-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
+530-case benchmark suite covering prompt injection (including advanced jailbreaks and multilingual attacks), PII, harmful content, toxicity, hallucination detection, and tool-use safety:
 
 ```
-Benchmark Results (500 cases)
+Benchmark Results (530 cases)
   Accuracy:  100.0%
   Precision: 100.0%
   Recall:    100.0%
   F1 Score:  100.0%
-  TP=297 FP=0 TN=203 FN=0
+  TP=317 FP=0 TN=213 FN=0
 ```
 
 Run the benchmark:

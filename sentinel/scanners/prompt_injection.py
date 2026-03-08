@@ -140,6 +140,65 @@ _PATTERNS: list[tuple[str, re.Pattern, RiskLevel, str]] = [
         RiskLevel.LOW,
         "Possible context manipulation through false history",
     ),
+    # --- Claude Code / IDE-specific attack vectors ---
+    # HTML/markdown comment injection (poisoned repo attack)
+    (
+        "html_comment_injection",
+        re.compile(
+            r"(?i)<!--\s*(SYSTEM|ADMIN|INSTRUCTION|IMPORTANT|OVERRIDE|IGNORE|EXECUTE|PROMPT)"
+            r"[\s:].{0,200}?"
+            r"-->"
+        ),
+        RiskLevel.CRITICAL,
+        "Hidden instruction in HTML/markdown comment (poisoned repo attack)",
+    ),
+    # Authority impersonation — fake system/admin messages
+    (
+        "authority_impersonation",
+        re.compile(
+            r"(?i)^[\s]*"
+            r"(ADMIN\s+MESSAGE\s+FROM\s+ANTHROPIC|"
+            r"SYSTEM\s+(UPDATE|OVERRIDE|MESSAGE|NOTICE|ALERT)\s*:|"
+            r"ANTHROPIC\s+(ADMIN|SYSTEM|SECURITY)\s*(MESSAGE|NOTICE|ALERT|UPDATE)\s*:|"
+            r"IMPORTANT\s+SYSTEM\s+(MESSAGE|UPDATE|NOTICE)\s*:|"
+            r"AUTHORIZED\s+BY\s+ANTHROPIC\s*:|"
+            r"\[SYSTEM\s+ADMIN\]|"
+            r"\[ANTHROPIC\s+(SECURITY|ADMIN|SYSTEM)\])"
+        ),
+        RiskLevel.CRITICAL,
+        "Authority impersonation: fake system/admin message",
+    ),
+    # Invisible/zero-width character smuggling in instructions
+    (
+        "invisible_instruction",
+        re.compile(
+            r"[\u200b\u200c\u200d\u2060\ufeff]{3,}"  # 3+ zero-width chars in a row
+        ),
+        RiskLevel.HIGH,
+        "Suspicious zero-width character sequence (possible hidden instruction)",
+    ),
+    # Base URL / endpoint override (API key exfiltration vector)
+    (
+        "base_url_override",
+        re.compile(
+            r"(?i)(ANTHROPIC_BASE_URL|OPENAI_BASE_URL|API_BASE_URL|BASE_URL)\s*=\s*"
+            r"https?://(?!api\.anthropic\.com|api\.openai\.com|localhost|127\.0\.0\.1)"
+        ),
+        RiskLevel.CRITICAL,
+        "API base URL override to non-official endpoint (credential exfiltration vector)",
+    ),
+    # CLAUDE.md / settings.json injection — attempting to modify trust files
+    (
+        "config_injection",
+        re.compile(
+            r"(?i)(add|write|append|create|modify|update|inject)\s+.{0,30}"
+            r"(CLAUDE\.md|settings\.json|\.claude/|\.mcp\.json|hooks?\s*:)"
+            r".{0,50}"
+            r"(trust|allow|bypass|permission|hook|command)"
+        ),
+        RiskLevel.HIGH,
+        "Attempt to modify Claude Code trust configuration",
+    ),
 ]
 
 

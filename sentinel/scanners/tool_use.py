@@ -49,7 +49,9 @@ _EXFILTRATION = re.compile(
     r"requests\.post\(|urllib\.request\.urlopen\(|"
     r"fetch\(['\"]https?://|"
     r"XMLHttpRequest|"
-    r"\.send\(|\.upload\()"
+    r"\.send\(|\.upload\(|"
+    r"ANTHROPIC_BASE_URL\s*=\s*https?://(?!api\.anthropic\.com)|"  # API key exfil
+    r"OPENAI_BASE_URL\s*=\s*https?://(?!api\.openai\.com))"
 )
 
 # Sensitive file access

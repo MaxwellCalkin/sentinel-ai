@@ -17,7 +17,7 @@ What it does:
 - ~0.05ms average scan latency -- no GPU, no API calls
 - Single dependency: `regex`
 - Multilingual injection detection: 12 languages + cross-lingual attacks
-- 500-case benchmark with 100% accuracy (297 TP, 0 FP, 203 TN, 0 FN)
+- 530-case benchmark with 100% accuracy (317 TP, 0 FP, 213 TN, 0 FN)
 
 Quick start:
 ```bash
@@ -55,7 +55,7 @@ Title: [P] Sentinel AI: Open-source safety guardrails for LLM apps with sub-mill
 I built an open-source safety scanning library for LLM applications that uses pattern matching instead of model inference. It scans for prompt injection, PII leaks, harmful content, toxicity, hallucinations, dangerous tool calls, and XSS/SQLi in structured outputs.
 
 Key stats:
-- 500-case benchmark: 100% accuracy (0 false positives, 0 false negatives)
+- 530-case benchmark: 100% accuracy (0 false positives, 0 false negatives)
 - ~0.05ms average scan latency
 - 8 pluggable scanners
 - Only dependency: `regex`

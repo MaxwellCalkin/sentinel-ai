@@ -48,7 +48,7 @@ def test_cli_benchmark(capsys):
     code = main(["benchmark"])
     assert code == 0
     out = capsys.readouterr().out
-    assert "500 cases" in out
+    assert "530 cases" in out
     assert "100.0%" in out
 
 
@@ -57,7 +57,7 @@ def test_cli_benchmark_json(capsys):
     out = capsys.readouterr().out
     data = json.loads(out)
     assert data["accuracy"] == "100.0%"
-    assert data["total_cases"] == 500
+    assert data["total_cases"] == 530
 
 
 def test_cli_red_team(capsys):
