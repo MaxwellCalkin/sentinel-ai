@@ -14,8 +14,9 @@ from sentinel.streaming import StreamingGuard
 from sentinel.rsp_report import RiskReportGenerator
 from sentinel.conversation import ConversationGuard
 from sentinel.adversarial import AdversarialTester
+from sentinel.scanners.code_scanner import CodeScanner
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 __all__ = [
     "SentinelGuard",
@@ -28,6 +29,7 @@ __all__ = [
     "ToxicityScanner",
     "BlockedTermsScanner",
     "ToolUseScanner",
+    "CodeScanner",
     "Policy",
     "StreamingGuard",
     "RiskReportGenerator",
