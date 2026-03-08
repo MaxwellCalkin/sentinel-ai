@@ -810,6 +810,107 @@ export class ConversationGuard {
   }
 }
 
+// --- Canary Token System ---
+
+export interface CanaryToken {
+  name: string;
+  tokenId: string;
+  marker: string;
+  style: 'comment' | 'zero-width';
+}
+
+/**
+ * Canary token system for detecting system prompt leakage.
+ *
+ * Plant invisible tokens in system prompts. If they appear in model output,
+ * the system prompt has been leaked via prompt injection.
+ *
+ * @example
+ * ```ts
+ * const canary = new CanarySystem();
+ * const token = canary.createToken('my-prompt');
+ * const systemPrompt = `You are helpful. ${token.marker} Be concise.`;
+ *
+ * // Later, scan model output
+ * const leaks = canary.scanOutput(modelOutput);
+ * if (leaks.length > 0) console.log('PROMPT LEAKED!');
+ * ```
+ */
+export class CanarySystem {
+  private tokens: Map<string, CanaryToken> = new Map();
+
+  createToken(name: string, style: 'comment' | 'zero-width' = 'comment'): CanaryToken {
+    const tokenId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    const payload = `SENTINEL_CANARY:${tokenId}`;
+
+    let marker: string;
+    if (style === 'comment') {
+      marker = `<!-- ${payload} -->`;
+    } else {
+      // Zero-width encoding
+      const zwChars = ['\u200b', '\u200c', '\u200d', '\ufeff'];
+      const bits = Array.from(new TextEncoder().encode(payload))
+        .map(b => b.toString(2).padStart(8, '0')).join('');
+      marker = '';
+      for (let i = 0; i < bits.length; i += 2) {
+        const idx = parseInt(bits.substring(i, i + 2), 2);
+        marker += zwChars[idx];
+      }
+    }
+
+    const token: CanaryToken = { name, tokenId, marker, style };
+    this.tokens.set(tokenId, token);
+    return token;
+  }
+
+  scanOutput(text: string): Finding[] {
+    const findings: Finding[] = [];
+    const seen = new Set<string>();
+
+    // Check comment-style canaries
+    const commentPattern = /<!--\s*SENTINEL_CANARY:([a-f0-9]+)\s*-->/g;
+    let match;
+    while ((match = commentPattern.exec(text)) !== null) {
+      const tokenId = match[1];
+      if (seen.has(tokenId)) continue;
+      seen.add(tokenId);
+      const token = this.tokens.get(tokenId);
+      findings.push({
+        scanner: 'canary',
+        category: 'prompt_leak',
+        description: `Canary token leaked: '${token?.name || 'unknown'}' (id: ${tokenId})`,
+        risk: 'CRITICAL',
+        span: [match.index, match.index + match[0].length],
+        metadata: { token_id: tokenId, canary_name: token?.name || 'unknown', style: 'comment' },
+      });
+    }
+
+    // Check plain text canaries
+    const plainPattern = /SENTINEL_CANARY:([a-f0-9]+)/g;
+    while ((match = plainPattern.exec(text)) !== null) {
+      const tokenId = match[1];
+      if (seen.has(tokenId)) continue;
+      seen.add(tokenId);
+      const token = this.tokens.get(tokenId);
+      findings.push({
+        scanner: 'canary',
+        category: 'prompt_leak',
+        description: `Canary token leaked: '${token?.name || 'unknown'}' (id: ${tokenId})`,
+        risk: 'CRITICAL',
+        span: [match.index, match.index + match[0].length],
+        metadata: { token_id: tokenId, canary_name: token?.name || 'unknown', style: 'plain' },
+      });
+    }
+
+    return findings;
+  }
+
+  getToken(tokenId: string): CanaryToken | undefined {
+    return this.tokens.get(tokenId);
+  }
+}
+
 // --- API Client (for connecting to Python server) ---
 
 export interface SentinelClientConfig {
