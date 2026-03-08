@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-393%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-411%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-318%20cases%20100%25-brightgreen.svg)](#benchmark)
 
 **Real-time safety guardrails for LLM applications.**
