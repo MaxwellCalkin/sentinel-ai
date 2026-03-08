@@ -344,6 +344,44 @@ def cmd_proxy(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_claudemd_scan(args: argparse.Namespace) -> int:
+    """Scan CLAUDE.md and project instruction files for injection vectors."""
+    from sentinel.claudemd_scanner import scan_claudemd, scan_project_instructions
+
+    if args.file:
+        content = Path(args.file).read_text(encoding="utf-8")
+        reports = [scan_claudemd(content, file_path=args.file)]
+    else:
+        project_dir = Path(args.dir) if args.dir else None
+        reports = scan_project_instructions(project_dir)
+
+    if not reports:
+        print("No instruction files found (CLAUDE.md, .cursorrules, etc.)")
+        return 0
+
+    if args.format == "json":
+        print(json.dumps([{
+            "file": r.file_path,
+            "safe": r.safe,
+            "risk": r.risk.value,
+            "lines_scanned": r.lines_scanned,
+            "findings": [{
+                "category": f.category,
+                "description": f.description,
+                "risk": f.risk.value,
+                "line": f.line,
+                "match": f.match,
+            } for f in r.findings],
+        } for r in reports], indent=2))
+    else:
+        for r in reports:
+            print(r.summary())
+            print()
+
+    has_critical = any(not r.safe for r in reports)
+    return 1 if has_critical else 0
+
+
 def cmd_audit(args: argparse.Namespace) -> int:
     """Audit project security configuration."""
     from sentinel.audit import run_audit
@@ -527,6 +565,20 @@ def main(argv: list[str] | None = None) -> int:
         "--dir", "-d", help="Project directory to audit (default: current directory)"
     )
 
+    # claudemd-scan command
+    cm_parser = subparsers.add_parser(
+        "claudemd-scan", help="Scan CLAUDE.md and project instruction files for injection vectors"
+    )
+    cm_parser.add_argument(
+        "--file", "-f", help="Specific file to scan (default: auto-detect CLAUDE.md, .cursorrules, etc.)"
+    )
+    cm_parser.add_argument(
+        "--format", choices=["text", "json"], default="text", help="Output format"
+    )
+    cm_parser.add_argument(
+        "--dir", "-d", help="Project directory (default: current directory)"
+    )
+
     # serve command
     serve_parser = subparsers.add_parser("serve", help="Start the API server")
     serve_parser.add_argument("--host", default="0.0.0.0", help="Bind host")
@@ -553,6 +605,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_mcp_proxy(args)
     elif args.command == "proxy":
         return cmd_proxy(args)
+    elif args.command == "claudemd-scan":
+        return cmd_claudemd_scan(args)
     elif args.command == "audit":
         return cmd_audit(args)
     elif args.command == "serve":

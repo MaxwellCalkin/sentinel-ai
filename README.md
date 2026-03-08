@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-green.svg)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-615%20passing-brightgreen.svg)](#benchmark)
+[![Tests](https://img.shields.io/badge/tests-651%20passing-brightgreen.svg)](#benchmark)
 [![Benchmark](https://img.shields.io/badge/benchmark-546%20cases%20100%25-brightgreen.svg)](#benchmark)
 [![Live Demo](https://img.shields.io/badge/demo-try%20it%20live-blue.svg)](https://maxwellcalkin.github.io/sentinel-ai/)
 
@@ -288,6 +288,7 @@ sentinel benchmark
 sentinel code-scan --file app.py   # Scan code for OWASP vulnerabilities
 sentinel pre-commit                # Scan git staged files (git hook)
 sentinel audit                     # Audit project security config (score out of 100)
+sentinel claudemd-scan             # Scan CLAUDE.md for injection vectors
 sentinel init     # Set up Claude Code hooks, MCP config, pre-commit hook, and policy
 ```
 
@@ -328,6 +329,18 @@ Add to your `claude_desktop_config.json`:
 ```
 
 Available MCP tools: `scan_text`, `scan_tool_call`, `check_pii`, `get_risk_report`, `scan_conversation`, `test_robustness`, `generate_rsp_report`.
+
+### CLAUDE.md Security Scanner
+
+Scan project instruction files (CLAUDE.md, .cursorrules, copilot-instructions.md) for hidden injection vectors:
+
+```bash
+sentinel claudemd-scan              # Auto-detect and scan all instruction files
+sentinel claudemd-scan --file CLAUDE.md  # Scan specific file
+sentinel claudemd-scan --format json     # JSON output for CI
+```
+
+Detects: hidden HTML comment injections, authority impersonation, API URL hijacking, zero-width character smuggling, base64 payloads, Unicode homoglyphs, dangerous permission grants, and safety-disabling instructions. Returns exit code 1 if critical issues are found.
 
 ### FastAPI Middleware
 
