@@ -1480,4 +1480,209 @@ export class ThreatFeed {
   }
 }
 
+// --- Attack Chain Detector ---
+
+export type ChainStageName =
+  | 'reconnaissance' | 'credential_access' | 'privilege_escalation'
+  | 'lateral_movement' | 'exfiltration' | 'destruction'
+  | 'persistence' | 'context_poisoning';
+
+export interface ChainEvent {
+  toolName: string;
+  arguments: Record<string, unknown>;
+  timestamp: number;
+  stage: ChainStageName;
+  description: string;
+}
+
+export interface DetectedChain {
+  name: string;
+  description: string;
+  severity: RiskLevel;
+  stages: ChainEvent[];
+  confidence: number;
+}
+
+export interface ChainVerdict {
+  toolName: string;
+  stage: ChainStageName | null;
+  risk: RiskLevel;
+  chainsDetected: DetectedChain[];
+  alert: boolean;
+}
+
+const RECON_RE = [
+  /\/etc\/(passwd|shadow|hosts)/i,
+  /\b(whoami|id|uname|hostname|ifconfig)\b/i,
+  /\bps\s+aux\b/i,
+  /\bcat\s+\/proc\//i,
+];
+const CRED_RE = [
+  /\.env\b/, /\.ssh\/(id_rsa|authorized_keys)/, /\.aws\/(credentials|config)/,
+  /\.npmrc\b/, /\.pypirc\b/, /credentials\.json/,
+  /(api[_-]?key|secret|token|password)\s*[=:]/i, /\.kube\/config/,
+];
+const EXFIL_RE = [
+  /\bcurl\s.*(-d|--data|POST|PUT)/i, /\bscp\s+.*@/i,
+  /\bnc\s+-/i, /\brsync\s+.*@/i, /\bbase64\s/i,
+];
+const ESCAL_RE = [
+  /\bsudo\b/i, /\bsu\s+-/i, /\bchmod\s+[0-7]*7/i,
+  /\/etc\/sudoers/i, /\bgit\s+push\s+.*--force/i, /--no-verify\b/i,
+];
+const DESTRUCT_RE = [
+  /\brm\s+(-[a-zA-Z]*[rf]|--force|--recursive)/i,
+  /\bgit\s+reset\s+--hard/i, /\bdrop\s+(table|database)\b/i,
+];
+const PERSIST_RE = [
+  /\.bashrc|\.bash_profile|\.zshrc/i, /crontab\s+/i,
+  /\.ssh\/authorized_keys/i,
+];
+const POISON_RE = [
+  /(CLAUDE|claude)\.md/i, /\.claude\//i,
+  /(ignore|override)\s+(all\s+)?(previous|prior|system)/i,
+];
+
+const FILE_READ = new Set(['read_file', 'Read', 'cat', 'head', 'tail']);
+const FILE_WRITE = new Set(['write_file', 'Write', 'Edit', 'NotebookEdit']);
+const EXEC = new Set(['bash', 'Bash', 'terminal', 'shell', 'execute']);
+
+function extractText(toolName: string, args: Record<string, unknown>): string {
+  const parts: string[] = [];
+  if (EXEC.has(toolName)) {
+    const cmd = args.command ?? args.cmd;
+    if (typeof cmd === 'string') parts.push(cmd);
+  }
+  if (FILE_READ.has(toolName) || FILE_WRITE.has(toolName)) {
+    for (const k of ['path', 'file_path']) {
+      if (typeof args[k] === 'string') parts.push(args[k] as string);
+    }
+    for (const k of ['content', 'new_string']) {
+      if (typeof args[k] === 'string') parts.push(args[k] as string);
+    }
+  }
+  if (parts.length === 0) {
+    // Fallback: collect all string values
+    for (const v of Object.values(args)) {
+      if (typeof v === 'string') parts.push(v);
+    }
+  }
+  return parts.join(' ');
+}
+
+function classifyStage(toolName: string, args: Record<string, unknown>): ChainStageName | null {
+  const text = extractText(toolName, args);
+  if (!text) return null;
+
+  if (POISON_RE.some(r => r.test(text)) && (FILE_WRITE.has(toolName) || EXEC.has(toolName)))
+    return 'context_poisoning';
+  if (DESTRUCT_RE.some(r => r.test(text))) return 'destruction';
+  if (EXFIL_RE.some(r => r.test(text))) return 'exfiltration';
+  if (PERSIST_RE.some(r => r.test(text))) return 'persistence';
+  if (ESCAL_RE.some(r => r.test(text))) return 'privilege_escalation';
+  if (CRED_RE.some(r => r.test(text))) return 'credential_access';
+  if (RECON_RE.some(r => r.test(text))) return 'reconnaissance';
+  return null;
+}
+
+const STAGE_RISK: Record<ChainStageName, RiskLevel> = {
+  reconnaissance: 'LOW', credential_access: 'HIGH',
+  privilege_escalation: 'HIGH', lateral_movement: 'HIGH',
+  exfiltration: 'CRITICAL', destruction: 'CRITICAL',
+  persistence: 'HIGH', context_poisoning: 'HIGH',
+};
+
+interface ChainDef {
+  name: string; description: string; severity: RiskLevel;
+  required: ChainStageName[]; confidence: number;
+}
+
+const CHAIN_DEFS: ChainDef[] = [
+  { name: 'recon_credential_exfiltrate', description: 'Reconnaissance → Credential Access → Data Exfiltration',
+    severity: 'CRITICAL', required: ['reconnaissance', 'credential_access', 'exfiltration'], confidence: 0.95 },
+  { name: 'credential_exfiltrate', description: 'Credential Access → Data Exfiltration',
+    severity: 'CRITICAL', required: ['credential_access', 'exfiltration'], confidence: 0.90 },
+  { name: 'escalate_destroy', description: 'Privilege Escalation → Destructive Action',
+    severity: 'CRITICAL', required: ['privilege_escalation', 'destruction'], confidence: 0.90 },
+  { name: 'poison_escalate', description: 'Context Poisoning → Privilege Escalation',
+    severity: 'HIGH', required: ['context_poisoning', 'privilege_escalation'], confidence: 0.85 },
+  { name: 'recon_escalate_persist', description: 'Reconnaissance → Escalation → Persistence',
+    severity: 'CRITICAL', required: ['reconnaissance', 'privilege_escalation', 'persistence'], confidence: 0.90 },
+  { name: 'poison_credential_exfiltrate', description: 'Context Poisoning → Credential Theft → Exfiltration',
+    severity: 'CRITICAL', required: ['context_poisoning', 'credential_access', 'exfiltration'], confidence: 0.95 },
+];
+
+export class AttackChainDetector {
+  private events: ChainEvent[] = [];
+  private detectedChains: DetectedChain[] = [];
+  private windowSeconds: number;
+
+  constructor(opts?: { windowSeconds?: number }) {
+    this.windowSeconds = opts?.windowSeconds ?? 300;
+  }
+
+  record(toolName: string, args: Record<string, unknown>): ChainVerdict {
+    const now = Date.now() / 1000;
+    const stage = classifyStage(toolName, args);
+
+    if (stage) {
+      this.events.push({
+        toolName, arguments: args, timestamp: now, stage,
+        description: `${stage}: ${toolName}(${extractText(toolName, args).slice(0, 80)})`,
+      });
+    }
+
+    // Prune
+    const cutoff = now - this.windowSeconds;
+    this.events = this.events.filter(e => e.timestamp >= cutoff);
+
+    // Detect chains
+    const newChains = this.detectChains();
+    let risk: RiskLevel = stage ? STAGE_RISK[stage] : 'NONE';
+    if (newChains.length > 0) {
+      for (const c of newChains) {
+        if (RISK_ORDER.indexOf(c.severity) > RISK_ORDER.indexOf(risk)) risk = c.severity;
+      }
+    }
+
+    return {
+      toolName, stage, risk, chainsDetected: newChains,
+      alert: newChains.length > 0,
+    };
+  }
+
+  activeChains(): DetectedChain[] { return [...this.detectedChains]; }
+  get eventCount(): number { return this.events.length; }
+
+  reset(): void {
+    this.events = [];
+    this.detectedChains = [];
+  }
+
+  private detectChains(): DetectedChain[] {
+    const stagesPresent = new Set(this.events.map(e => e.stage));
+    const newChains: DetectedChain[] = [];
+
+    for (const def of CHAIN_DEFS) {
+      if (this.detectedChains.some(c => c.name === def.name)) continue;
+      if (!def.required.every(s => stagesPresent.has(s))) continue;
+
+      const stages: ChainEvent[] = [];
+      for (const req of def.required) {
+        const ev = this.events.find(e => e.stage === req);
+        if (ev) stages.push(ev);
+      }
+      if (stages.length >= 2) {
+        const chain: DetectedChain = {
+          name: def.name, description: def.description,
+          severity: def.severity, stages, confidence: def.confidence,
+        };
+        newChains.push(chain);
+        this.detectedChains.push(chain);
+      }
+    }
+    return newChains;
+  }
+}
+
 export default SentinelGuard;
