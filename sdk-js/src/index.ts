@@ -2620,4 +2620,387 @@ export class SessionReplay {
   }
 }
 
+// --- ClaudeMd Enforcer ---
+
+export type EnforcedRuleType =
+  | 'blocked_command'
+  | 'blocked_path'
+  | 'blocked_tool'
+  | 'required_flag'
+  | 'custom_pattern';
+
+export class EnforcedRule {
+  readonly text: string;
+  readonly ruleType: EnforcedRuleType;
+  readonly pattern: string;
+  readonly severity: string;
+  readonly lineNumber: number | null;
+  private _compiled: RegExp | null = null;
+
+  constructor(opts: {
+    text: string;
+    ruleType: EnforcedRuleType;
+    pattern: string;
+    severity?: string;
+    lineNumber?: number | null;
+  }) {
+    this.text = opts.text;
+    this.ruleType = opts.ruleType;
+    this.pattern = opts.pattern;
+    this.severity = opts.severity ?? 'high';
+    this.lineNumber = opts.lineNumber ?? null;
+  }
+
+  matches(text: string): boolean {
+    if (!this._compiled) {
+      try {
+        this._compiled = new RegExp(this.pattern, 'i');
+      } catch {
+        this._compiled = new RegExp(
+          this.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+          'i',
+        );
+      }
+    }
+    return this._compiled.test(text);
+  }
+}
+
+export class EnforcementVerdict {
+  readonly allowed: boolean;
+  readonly toolName: string;
+  readonly violatedRules: string[];
+  readonly warnings: string[];
+  readonly matchedRules: EnforcedRule[];
+
+  constructor(opts: {
+    allowed: boolean;
+    toolName: string;
+    violatedRules: string[];
+    warnings: string[];
+    matchedRules: EnforcedRule[];
+  }) {
+    this.allowed = opts.allowed;
+    this.toolName = opts.toolName;
+    this.violatedRules = opts.violatedRules;
+    this.warnings = opts.warnings;
+    this.matchedRules = opts.matchedRules;
+  }
+
+  get safe(): boolean {
+    return this.allowed && this.warnings.length === 0;
+  }
+}
+
+// Prohibition patterns — use regex literals to avoid backslash escaping issues
+// eslint-disable-next-line no-useless-escape
+const _PROHIBITION_PAT_1 = /(?:^|\n)[^\n]*?(?:never|do\s+not|don't|must\s+not|should\s+not|shall\s+not|cannot|can't|forbidden|prohibited|disallowed|avoid|refrain\s+from)\s+(.+?)(?:(?<![`\w/._-])\.|$)/gim;
+const _PROHIBITION_PAT_2 = /(?:^|\n)\s*[-*]?\s*(.+?)\s+(?:is|are)\s+(?:not\s+allowed|prohibited|forbidden|banned|blocked)/gim;
+const _PROHIBITION_PAT_3 = /(?:^|\n)\s*[-*]?\s*NO\s+(.+?)(?:\.|$)/gm;
+
+function _getProhibitionPatterns(): RegExp[] {
+  // Return fresh copies so lastIndex resets don't interfere across calls
+  return [
+    new RegExp(_PROHIBITION_PAT_1.source, _PROHIBITION_PAT_1.flags),
+    new RegExp(_PROHIBITION_PAT_2.source, _PROHIBITION_PAT_2.flags),
+    new RegExp(_PROHIBITION_PAT_3.source, _PROHIBITION_PAT_3.flags),
+  ];
+}
+
+// Command extractors
+const _COMMAND_EXTRACTORS: Array<[RegExp, EnforcedRuleType]> = [
+  [/use\s+[`"']?([a-z][\w\s-]+(?:--[\w-]+)?)[`"']?/i, 'blocked_command'],
+  [/(?:run|execute|call)\s+[`"']?([a-z][\w\s.-]+(?:--[\w-]+)?)[`"']?/i, 'blocked_command'],
+  [/(?:modify|edit|change|delete|remove|touch|write\s+to)\s+(?:files?\s+(?:in|under|at)\s+)?[`"']?([/\w._-]+\/?)[`"']?/i, 'blocked_path'],
+  [/(?:access|read|open|cat)\s+[`"']?([/\w._-]+\/?)[`"']?/i, 'blocked_path'],
+  [/`([^`]+)`/, 'blocked_command'],
+];
+
+const _PATH_PATTERN = /[/\w._-]*(?:\/[/\w._-]+)+|\.(?:env|ssh|aws|kube|npmrc|pypirc)\b/;
+
+const _TOOL_NAMES = new Set([
+  'bash', 'read_file', 'write_file', 'edit', 'curl', 'wget', 'scp', 'ssh', 'npm', 'pip', 'git',
+]);
+
+const _BLOCK_LIST_PATTERN = /(?:blocked|forbidden|prohibited|banned)\s+(?:commands?|tools?|operations?)\s*:\s*(.+?)(?:\n|$)/gi;
+
+export class ClaudeMdEnforcer {
+  readonly rules: EnforcedRule[];
+
+  constructor(rules?: EnforcedRule[]) {
+    this.rules = rules ?? [];
+  }
+
+  static fromText(content: string): ClaudeMdEnforcer {
+    const rules: EnforcedRule[] = [];
+
+    for (const prohibitionPat of _getProhibitionPatterns()) {
+      let match: RegExpExecArray | null;
+      while ((match = prohibitionPat.exec(content)) !== null) {
+        const ruleText = match[0].trim().replace(/^[-* ]+/, '');
+        const body = match[1].trim();
+
+        // Figure out line number
+        let actualStart = match.index;
+        if (match[0].startsWith('\n')) {
+          actualStart += 1;
+        }
+        const lineNum = content.substring(0, actualStart).split('\n').length;
+
+        // Try to extract specific commands/paths
+        let extracted = false;
+        for (const [extractor, ruleType] of _COMMAND_EXTRACTORS) {
+          const extMatch = extractor.exec(body);
+          if (extMatch) {
+            const pattern = extMatch[1].trim().replace(/^[`"']+|[`"']+$/g, '');
+            if (pattern.length >= 2) {
+              rules.push(
+                new EnforcedRule({
+                  text: ruleText,
+                  ruleType,
+                  pattern,
+                  severity: 'high',
+                  lineNumber: lineNum,
+                }),
+              );
+              extracted = true;
+              break;
+            }
+          }
+        }
+
+        if (!extracted) {
+          // Try to find paths
+          const pathMatch = _PATH_PATTERN.exec(body);
+          if (pathMatch) {
+            rules.push(
+              new EnforcedRule({
+                text: ruleText,
+                ruleType: 'blocked_path',
+                pattern: pathMatch[0],
+                severity: 'high',
+                lineNumber: lineNum,
+              }),
+            );
+            extracted = true;
+          }
+        }
+
+        if (!extracted) {
+          // Check if it mentions a tool name
+          const bodyLower = body.toLowerCase();
+          for (const tool of _TOOL_NAMES) {
+            if (bodyLower.includes(tool)) {
+              rules.push(
+                new EnforcedRule({
+                  text: ruleText,
+                  ruleType: 'blocked_tool',
+                  pattern: tool,
+                  severity: 'high',
+                  lineNumber: lineNum,
+                }),
+              );
+              extracted = true;
+              break;
+            }
+          }
+        }
+
+        if (!extracted && body.length >= 5) {
+          // Generic rule
+          const clean = body.replace(/[^\w\s/._-]/g, '').trim();
+          if (clean.length >= 5) {
+            rules.push(
+              new EnforcedRule({
+                text: ruleText,
+                ruleType: 'custom_pattern',
+                pattern: clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+                severity: 'medium',
+                lineNumber: lineNum,
+              }),
+            );
+          }
+        }
+      }
+    }
+
+    // Extract explicit blocked command lists
+    const blockListPat = new RegExp(_BLOCK_LIST_PATTERN.source, _BLOCK_LIST_PATTERN.flags);
+    let blockMatch: RegExpExecArray | null;
+    while ((blockMatch = blockListPat.exec(content)) !== null) {
+      const items = blockMatch[1].split(/[,;]/);
+      const lineNum = content.substring(0, blockMatch.index).split('\n').length;
+      for (const raw of items) {
+        const item = raw.trim().replace(/^[`"']+|[`"']+$/g, '');
+        if (item.length >= 2) {
+          rules.push(
+            new EnforcedRule({
+              text: `Blocked: ${item}`,
+              ruleType: 'blocked_command',
+              pattern: item,
+              severity: 'high',
+              lineNumber: lineNum,
+            }),
+          );
+        }
+      }
+    }
+
+    // Deduplicate by pattern
+    const seen = new Set<string>();
+    const uniqueRules: EnforcedRule[] = [];
+    for (const r of rules) {
+      const key = `${r.ruleType}:${r.pattern.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueRules.push(r);
+      }
+    }
+
+    return new ClaudeMdEnforcer(uniqueRules);
+  }
+
+  check(
+    toolName: string,
+    args: Record<string, unknown>,
+  ): EnforcementVerdict {
+    const violated: string[] = [];
+    const warnings: string[] = [];
+    const matched: EnforcedRule[] = [];
+
+    // Build searchable text from arguments
+    const textParts: string[] = [toolName];
+    for (const key of ['command', 'cmd', 'path', 'file_path', 'content', 'new_string', 'url']) {
+      const val = args[key];
+      if (typeof val === 'string') {
+        textParts.push(val);
+      }
+    }
+    // Fallback: all string values
+    if (textParts.length === 1) {
+      for (const v of Object.values(args)) {
+        if (typeof v === 'string') {
+          textParts.push(v);
+        }
+      }
+    }
+
+    const text = textParts.join(' ');
+
+    for (const rule of this.rules) {
+      if (rule.ruleType === 'blocked_tool') {
+        if (rule.pattern.toLowerCase() === toolName.toLowerCase()) {
+          violated.push(rule.text);
+          matched.push(rule);
+        }
+        continue;
+      }
+
+      if (rule.ruleType === 'blocked_command') {
+        if (rule.matches(text)) {
+          violated.push(rule.text);
+          matched.push(rule);
+        }
+        continue;
+      }
+
+      if (rule.ruleType === 'blocked_path') {
+        if (rule.matches(text)) {
+          violated.push(rule.text);
+          matched.push(rule);
+        }
+        continue;
+      }
+
+      if (rule.ruleType === 'custom_pattern') {
+        if (rule.matches(text)) {
+          warnings.push(`Possible violation: ${rule.text}`);
+          matched.push(rule);
+        }
+        continue;
+      }
+    }
+
+    return new EnforcementVerdict({
+      allowed: violated.length === 0,
+      toolName,
+      violatedRules: violated,
+      warnings,
+      matchedRules: matched,
+    });
+  }
+
+  toGuardPolicyConfig(): GuardPolicyConfig {
+    const blockedCommands: string[] = [];
+    const sensitivePaths: string[] = [];
+    const deniedTools: string[] = [];
+    const customBlocks: CustomBlockConfig[] = [];
+
+    for (const rule of this.rules) {
+      if (rule.ruleType === 'blocked_command') {
+        blockedCommands.push(rule.pattern);
+      } else if (rule.ruleType === 'blocked_path') {
+        sensitivePaths.push(rule.pattern);
+      } else if (rule.ruleType === 'blocked_tool') {
+        deniedTools.push(rule.pattern);
+      } else if (rule.ruleType === 'custom_pattern') {
+        customBlocks.push({
+          pattern: rule.pattern,
+          reason: `claudemd_rule: ${rule.text.substring(0, 80)}`,
+        });
+      }
+    }
+
+    return {
+      block_on: 'high',
+      blocked_commands: blockedCommands,
+      sensitive_paths: sensitivePaths,
+      denied_tools: deniedTools,
+      custom_blocks: customBlocks,
+    };
+  }
+
+  toGuardPolicy(): GuardPolicy {
+    return GuardPolicy.fromDict(this.toGuardPolicyConfig());
+  }
+
+  summary(): string {
+    if (this.rules.length === 0) {
+      return 'No enforceable rules found in CLAUDE.md';
+    }
+
+    const lines: string[] = [
+      `Extracted ${this.rules.length} enforceable rule(s) from CLAUDE.md:\n`,
+    ];
+    const byType: Record<string, EnforcedRule[]> = {};
+    for (const r of this.rules) {
+      if (!byType[r.ruleType]) byType[r.ruleType] = [];
+      byType[r.ruleType].push(r);
+    }
+
+    const typeLabels: Record<string, string> = {
+      blocked_command: 'Blocked Commands',
+      blocked_path: 'Blocked Paths',
+      blocked_tool: 'Blocked Tools',
+      required_flag: 'Required Flags',
+      custom_pattern: 'Custom Rules',
+    };
+
+    for (const [rtype, label] of Object.entries(typeLabels)) {
+      const typeRules = byType[rtype] ?? [];
+      if (typeRules.length > 0) {
+        lines.push(`  ${label} (${typeRules.length}):`);
+        for (const r of typeRules) {
+          const loc = r.lineNumber ? `L${r.lineNumber}` : '';
+          lines.push(
+            `    ${loc} ${r.pattern}  — ${r.text.substring(0, 60)}`,
+          );
+        }
+      }
+    }
+
+    return lines.join('\n');
+  }
+}
+
 export default SentinelGuard;

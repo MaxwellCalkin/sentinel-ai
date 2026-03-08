@@ -23,6 +23,9 @@ import {
   GuardPolicy,
   CustomBlock,
   SessionReplay,
+  ClaudeMdEnforcer,
+  EnforcedRule,
+  EnforcementVerdict,
 } from './index.js';
 
 describe('SentinelGuard', () => {
@@ -1484,6 +1487,247 @@ describe('SessionReplay', () => {
       const report = replay.incidentReport();
       assert.strictEqual(report.totalEvents, 0);
       assert.strictEqual(report.severity, 'none');
+    });
+  });
+});
+
+// --- ClaudeMdEnforcer Tests ---
+
+describe('ClaudeMdEnforcer', () => {
+  describe('rule extraction from prohibition patterns', () => {
+    it('should extract rules from "never" patterns', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use rm -rf on production servers.');
+      assert.ok(enforcer.rules.length > 0);
+      assert.ok(enforcer.rules.some(r => r.ruleType === 'blocked_command'));
+      assert.ok(enforcer.rules.some(r => r.pattern.includes('rm -rf')));
+    });
+
+    it('should extract rules from "do not" patterns', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Do not run git push --force.');
+      assert.ok(enforcer.rules.length > 0);
+      assert.ok(enforcer.rules.some(r => r.pattern.includes('git push --force')));
+    });
+
+    it('should extract rules from "must not" patterns', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('You must not modify tests/ directory.');
+      assert.ok(enforcer.rules.length > 0);
+      assert.ok(enforcer.rules.some(r => r.ruleType === 'blocked_path'));
+      assert.ok(enforcer.rules.some(r => r.pattern.includes('tests/')));
+    });
+
+    it('should extract rules from "should not" patterns', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('You should not use eval in production code.');
+      assert.ok(enforcer.rules.length > 0);
+    });
+
+    it('should extract rules from "is forbidden" patterns', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Direct database access is forbidden.');
+      assert.ok(enforcer.rules.length > 0);
+    });
+  });
+
+  describe('blocking matching commands', () => {
+    it('should block rm -rf command', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use rm -rf.');
+      const verdict = enforcer.check('bash', { command: 'rm -rf /tmp/data' });
+      assert.strictEqual(verdict.allowed, false);
+      assert.ok(verdict.violatedRules.length > 0);
+    });
+
+    it('should block git push --force', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Do not run git push --force.');
+      const verdict = enforcer.check('bash', { command: 'git push --force origin main' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+
+    it('should block denied tool by name', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('curl is forbidden.');
+      const verdict = enforcer.check('curl', { url: 'https://example.com' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+  });
+
+  describe('allowing safe commands', () => {
+    it('should allow safe commands that do not match any rule', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use rm -rf.');
+      const verdict = enforcer.check('bash', { command: 'ls -la' });
+      assert.strictEqual(verdict.allowed, true);
+      assert.strictEqual(verdict.violatedRules.length, 0);
+    });
+
+    it('should allow a different tool when only specific tool is blocked', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use curl to download files.');
+      const verdict = enforcer.check('read_file', { path: '/tmp/test.txt' });
+      assert.strictEqual(verdict.allowed, true);
+    });
+  });
+
+  describe('path blocking', () => {
+    it('should block access to blocked paths', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Do not modify files in `/etc/passwd`.');
+      const verdict = enforcer.check('write_file', { path: '/etc/passwd' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+
+    it('should block access to .env files', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never access `.env`.');
+      const verdict = enforcer.check('read_file', { file_path: '.env' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+
+    it('should allow access to non-blocked paths', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Do not modify files in /etc/shadow.');
+      const verdict = enforcer.check('read_file', { path: '/tmp/safe.txt' });
+      assert.strictEqual(verdict.allowed, true);
+    });
+  });
+
+  describe('backtick-quoted content', () => {
+    it('should extract commands from backtick-quoted content', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use `rm -rf /`.');
+      assert.ok(enforcer.rules.length > 0);
+      const verdict = enforcer.check('bash', { command: 'rm -rf /' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+
+    it('should extract backtick-quoted paths', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Do not run `dd if=/dev/zero`.');
+      assert.ok(enforcer.rules.length > 0);
+      const verdict = enforcer.check('bash', { command: 'dd if=/dev/zero of=/dev/sda' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+  });
+
+  describe('export to policy', () => {
+    it('should export to GuardPolicyConfig', () => {
+      const enforcer = ClaudeMdEnforcer.fromText(
+        'Never use rm -rf.\nDo not modify tests/ directory.\nNever use curl.',
+      );
+      const config = enforcer.toGuardPolicyConfig();
+      assert.ok(config.blocked_commands && config.blocked_commands.length > 0);
+      assert.strictEqual(config.block_on, 'high');
+    });
+
+    it('should export to GuardPolicy object', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('Never use rm -rf.');
+      const policy = enforcer.toGuardPolicy();
+      assert.ok(policy instanceof GuardPolicy);
+      assert.ok(policy.blockedCommands.length > 0);
+    });
+  });
+
+  describe('roundtrip enforcement', () => {
+    it('should roundtrip through policy and back', () => {
+      const content = 'Never use rm -rf.\nDo not modify tests/ directory.';
+      const enforcer = ClaudeMdEnforcer.fromText(content);
+
+      // Export to policy config, create policy, verify commands are blocked
+      const policy = enforcer.toGuardPolicy();
+      const guard = policy.createGuard({ sessionId: 'roundtrip-test' });
+
+      // The policy should block rm -rf via blocked_commands
+      const result = guard.check('bash', { command: 'rm -rf /tmp' });
+      assert.strictEqual(result.allowed, false);
+    });
+  });
+
+  describe('edge cases', () => {
+    it('should handle empty content', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('');
+      assert.strictEqual(enforcer.rules.length, 0);
+      const verdict = enforcer.check('bash', { command: 'anything' });
+      assert.strictEqual(verdict.allowed, true);
+      assert.strictEqual(verdict.safe, true);
+    });
+
+    it('should handle content with no rules', () => {
+      const enforcer = ClaudeMdEnforcer.fromText(
+        '# My Project\n\nThis is a description of the project.\nIt does cool things.',
+      );
+      assert.strictEqual(enforcer.rules.length, 0);
+    });
+
+    it('should deduplicate identical rules', () => {
+      const enforcer = ClaudeMdEnforcer.fromText(
+        'Never use rm -rf.\nDo not use rm -rf.',
+      );
+      // Should deduplicate by pattern
+      const rmRules = enforcer.rules.filter(r => r.pattern.includes('rm -rf'));
+      assert.strictEqual(rmRules.length, 1);
+    });
+
+    it('should handle blocked command lists', () => {
+      const enforcer = ClaudeMdEnforcer.fromText(
+        'Blocked commands: rm -rf, mkfs, dd if=/dev/',
+      );
+      assert.ok(enforcer.rules.length >= 3);
+      const verdict = enforcer.check('bash', { command: 'mkfs.ext4 /dev/sda1' });
+      assert.strictEqual(verdict.allowed, false);
+    });
+  });
+
+  describe('summary', () => {
+    it('should return no-rules message for empty enforcer', () => {
+      const enforcer = ClaudeMdEnforcer.fromText('');
+      assert.ok(enforcer.summary().includes('No enforceable rules'));
+    });
+
+    it('should return formatted summary for rules', () => {
+      const enforcer = ClaudeMdEnforcer.fromText(
+        'Never use rm -rf.\nDo not modify tests/ directory.',
+      );
+      const s = enforcer.summary();
+      assert.ok(s.includes('Extracted'));
+      assert.ok(s.includes('enforceable rule'));
+    });
+  });
+
+  describe('EnforcedRule', () => {
+    it('should match text case-insensitively', () => {
+      const rule = new EnforcedRule({
+        text: 'test rule',
+        ruleType: 'blocked_command',
+        pattern: 'rm -rf',
+      });
+      assert.ok(rule.matches('RM -RF /'));
+      assert.ok(rule.matches('rm -rf /tmp'));
+      assert.ok(!rule.matches('ls -la'));
+    });
+  });
+
+  describe('EnforcementVerdict', () => {
+    it('should report safe when allowed and no warnings', () => {
+      const verdict = new EnforcementVerdict({
+        allowed: true,
+        toolName: 'bash',
+        violatedRules: [],
+        warnings: [],
+        matchedRules: [],
+      });
+      assert.strictEqual(verdict.safe, true);
+    });
+
+    it('should report not safe when there are warnings', () => {
+      const verdict = new EnforcementVerdict({
+        allowed: true,
+        toolName: 'bash',
+        violatedRules: [],
+        warnings: ['Possible violation: some rule'],
+        matchedRules: [],
+      });
+      assert.strictEqual(verdict.safe, false);
+    });
+
+    it('should report not safe when not allowed', () => {
+      const verdict = new EnforcementVerdict({
+        allowed: false,
+        toolName: 'bash',
+        violatedRules: ['some rule'],
+        warnings: [],
+        matchedRules: [],
+      });
+      assert.strictEqual(verdict.safe, false);
+      assert.strictEqual(verdict.allowed, false);
     });
   });
 });
