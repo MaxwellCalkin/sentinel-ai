@@ -3003,4 +3003,244 @@ export class ClaudeMdEnforcer {
   }
 }
 
+// ============================================================================
+// CodeScanner — OWASP Top 10 vulnerability detection for generated code
+// ============================================================================
+
+interface CodePattern {
+  category: string;
+  pattern: RegExp;
+  risk: RiskLevel;
+  description: string;
+}
+
+const _SQL_INJECTION: CodePattern[] = [
+  {
+    category: 'sql_injection',
+    pattern: /(?:cursor\.execute|\.query|\.raw|\.execute|\.executemany)\s*\(\s*(?:f['"`]|['"`].*?\s*\+|.*?\.format\s*\()/gi,
+    risk: 'CRITICAL',
+    description: 'SQL injection: string interpolation in SQL query — use parameterized queries',
+  },
+  {
+    category: 'sql_injection',
+    pattern: /(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER)\s+.*?(?:['"`]?\s*\+\s*(?:req|request|user|input|params|args|data)\b|\{\s*(?:req|request|user|input|params|args|data)\b)/gi,
+    risk: 'HIGH',
+    description: 'SQL injection: user input concatenated into SQL statement',
+  },
+];
+
+const _COMMAND_INJECTION: CodePattern[] = [
+  {
+    category: 'command_injection',
+    pattern: /subprocess\.(?:call|run|Popen|check_output|check_call)\s*\(.*?shell\s*=\s*True/gis,
+    risk: 'HIGH',
+    description: 'Command injection risk: subprocess with shell=True — use shell=False with argument list',
+  },
+  {
+    category: 'command_injection',
+    pattern: /os\.(?:system|popen)\s*\(\s*(?:f['"`]|['"`].*?\+|.*?\.format|.*?%\s)/gi,
+    risk: 'CRITICAL',
+    description: 'Command injection: os.system/popen with string interpolation',
+  },
+  {
+    category: 'command_injection',
+    pattern: /(?:child_process\.exec|execSync|eval)\s*\(.*?(?:req\.|request\.|params\.|query\.|body\.|input|args)/gi,
+    risk: 'CRITICAL',
+    description: 'Command injection: exec/eval with user-controlled input',
+  },
+];
+
+const _XSS_PATTERNS: CodePattern[] = [
+  {
+    category: 'xss',
+    pattern: /\.innerHTML\s*=\s*(?!['"`]\s*$).*?(?:req|request|user|input|params|query|data|variable)\b/gi,
+    risk: 'HIGH',
+    description: 'XSS: innerHTML set with potentially user-controlled value — use textContent or sanitize',
+  },
+  {
+    category: 'xss',
+    pattern: /document\.write\s*\((?!['"][^'"]*['"]\s*\))/gi,
+    risk: 'MEDIUM',
+    description: 'XSS risk: document.write with dynamic content',
+  },
+  {
+    category: 'xss',
+    pattern: /\{\{.*?\|\s*safe\s*\}\}/g,
+    risk: 'HIGH',
+    description: 'XSS: template |safe filter bypasses auto-escaping — ensure content is sanitized',
+  },
+  {
+    category: 'xss',
+    pattern: /Markup\s*\(.*?(?:request|user|input|data)\b/gi,
+    risk: 'HIGH',
+    description: 'XSS: Markup() with user-controlled content bypasses escaping',
+  },
+];
+
+const _PATH_TRAVERSAL_PATTERNS: CodePattern[] = [
+  {
+    category: 'path_traversal',
+    pattern: /open\s*\(\s*(?:f['"`]|.*?\+|.*?\.format|.*?os\.path\.join\s*\().*?(?:req|request|user|input|params|filename|path|file_path|upload)\b/gi,
+    risk: 'HIGH',
+    description: 'Path traversal: file opened with user-controlled path — validate and sanitize path',
+  },
+  {
+    category: 'path_traversal',
+    pattern: /(?:send_file|send_from_directory)\s*\(.*?(?:request|user|input|params|filename)\b/gi,
+    risk: 'MEDIUM',
+    description: 'Path traversal risk: serving file with user-controlled path',
+  },
+];
+
+const _DESERIALIZATION: CodePattern[] = [
+  {
+    category: 'insecure_deserialization',
+    pattern: /pickle\.loads?\s*\(/gi,
+    risk: 'HIGH',
+    description: 'Insecure deserialization: pickle.load can execute arbitrary code — use JSON or safe alternatives',
+  },
+  {
+    category: 'insecure_deserialization',
+    pattern: /yaml\.(?:load|unsafe_load)\s*\((?!.*Loader\s*=\s*yaml\.SafeLoader)/gi,
+    risk: 'HIGH',
+    description: 'Insecure deserialization: yaml.load without SafeLoader can execute arbitrary code',
+  },
+  {
+    category: 'insecure_deserialization',
+    pattern: /\beval\s*\(\s*(?!['"][^'"]*['"]\s*\))/gi,
+    risk: 'HIGH',
+    description: 'Code injection: eval() with dynamic input can execute arbitrary code',
+  },
+  {
+    category: 'insecure_deserialization',
+    pattern: /marshal\.loads?\s*\(/gi,
+    risk: 'HIGH',
+    description: 'Insecure deserialization: marshal.load is not safe for untrusted data',
+  },
+];
+
+const _HARDCODED_SECRETS_CODE: CodePattern[] = [
+  {
+    category: 'hardcoded_secret',
+    pattern: /(?:password|passwd|pwd|secret|api_key|apikey|api_secret|access_token|auth_token|private_key|secret_key)\s*=\s*['"`][^'"`]{8,}['"`]\s*$/gim,
+    risk: 'CRITICAL',
+    description: 'Hardcoded secret: credential value embedded in source code — use environment variables',
+  },
+  {
+    category: 'hardcoded_secret',
+    pattern: /(?:AKIA|ASIA)[A-Z0-9]{16}/g,
+    risk: 'CRITICAL',
+    description: 'Hardcoded AWS access key detected in source code',
+  },
+];
+
+const _INSECURE_CRYPTO: CodePattern[] = [
+  {
+    category: 'insecure_crypto',
+    pattern: /(?:hashlib\.)?(?:md5|sha1)\s*\(/gi,
+    risk: 'MEDIUM',
+    description: 'Weak hash: MD5/SHA1 should not be used for security purposes — use SHA-256+',
+  },
+  {
+    category: 'insecure_crypto',
+    pattern: /AES\.new\s*\(.*?MODE_ECB/gi,
+    risk: 'HIGH',
+    description: 'Insecure crypto: AES-ECB mode does not provide semantic security — use CBC or GCM',
+  },
+  {
+    category: 'insecure_crypto',
+    pattern: /DES\b.*?\.new\s*\(/gi,
+    risk: 'HIGH',
+    description: 'Insecure crypto: DES is broken — use AES-256',
+  },
+];
+
+const _SSRF_PATTERNS: CodePattern[] = [
+  {
+    category: 'ssrf',
+    pattern: /(?:requests\.(?:get|post|put|delete|patch|head)|urllib\.request\.urlopen|http\.client\.HTTP|axios\.(?:get|post))\s*\(.*?(?:req\.|request\.|params\.|query\.|body\.|user_?input|url_param)\b/gi,
+    risk: 'HIGH',
+    description: 'SSRF risk: HTTP request with user-controlled URL — validate against allowlist',
+  },
+  {
+    category: 'ssrf',
+    pattern: /fetch\s*\(.*?(?:req\.|request\.|params\.|query\.|body\.|user_?input|url_param)\b/gi,
+    risk: 'HIGH',
+    description: 'SSRF risk: fetch() with user-controlled URL — validate against allowlist',
+  },
+];
+
+const _ALL_CODE_PATTERNS: CodePattern[] = [
+  ..._SQL_INJECTION,
+  ..._COMMAND_INJECTION,
+  ..._XSS_PATTERNS,
+  ..._PATH_TRAVERSAL_PATTERNS,
+  ..._DESERIALIZATION,
+  ..._HARDCODED_SECRETS_CODE,
+  ..._INSECURE_CRYPTO,
+  ..._SSRF_PATTERNS,
+];
+
+/**
+ * Scans AI-generated code for OWASP Top 10 vulnerabilities.
+ *
+ * Designed as a PostToolUse scanner for Claude Code Write/Edit tools.
+ * Detects SQL injection, command injection, XSS, path traversal,
+ * insecure deserialization, hardcoded secrets, weak crypto, and SSRF.
+ *
+ * @example
+ * ```ts
+ * const scanner = new CodeScanner();
+ * const findings = scanner.scan(`cursor.execute(f"SELECT * FROM users WHERE id={user_id}")`);
+ * // findings[0].category === 'sql_injection'
+ * // findings[0].risk === 'CRITICAL'
+ * ```
+ */
+export class CodeScanner {
+  /**
+   * Scan code text for security vulnerabilities.
+   */
+  scan(code: string, filename?: string): Finding[] {
+    if (!code || code.trim().length < 5) return [];
+
+    const findings: Finding[] = [];
+
+    for (const { category, pattern, risk, description } of _ALL_CODE_PATTERNS) {
+      // Reset lastIndex for global regexes
+      const re = new RegExp(pattern.source, pattern.flags);
+      let match: RegExpExecArray | null;
+      while ((match = re.exec(code)) !== null) {
+        const lineNum = code.substring(0, match.index).split('\n').length;
+        findings.push({
+          scanner: 'code_scanner',
+          category,
+          description: `Line ${lineNum}: ${description}`,
+          risk,
+          span: [match.index, match.index + match[0].length],
+          metadata: {
+            line: lineNum,
+            match: match[0].substring(0, 100),
+            filename: filename ?? 'unknown',
+          },
+        });
+      }
+    }
+
+    return findings;
+  }
+
+  /**
+   * Scan a Claude Code Write/Edit tool output for code vulnerabilities.
+   */
+  scanToolOutput(toolName: string, output: Record<string, unknown>): Finding[] {
+    if (!['Write', 'Edit', 'write', 'edit'].includes(toolName)) return [];
+
+    const filename = (output.file_path ?? output.path ?? '') as string;
+    const content = (output.content ?? output.new_string ?? '') as string;
+
+    if (!content) return [];
+    return this.scan(content, filename);
+  }
+}
+
 export default SentinelGuard;

@@ -26,6 +26,7 @@ import {
   ClaudeMdEnforcer,
   EnforcedRule,
   EnforcementVerdict,
+  CodeScanner,
 } from './index.js';
 
 describe('SentinelGuard', () => {
@@ -1728,6 +1729,316 @@ describe('ClaudeMdEnforcer', () => {
       });
       assert.strictEqual(verdict.safe, false);
       assert.strictEqual(verdict.allowed, false);
+    });
+  });
+});
+
+// ============================================================================
+// CodeScanner Tests
+// ============================================================================
+
+describe('CodeScanner', () => {
+  const scanner = new CodeScanner();
+
+  describe('SQL Injection', () => {
+    it('should detect f-string SQL injection', () => {
+      const code = `cursor.execute(f"SELECT * FROM users WHERE id={user_id}")`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'sql_injection');
+      assert.strictEqual(findings[0].risk, 'CRITICAL');
+    });
+
+    it('should detect string concatenation in SQL', () => {
+      const code = `cursor.execute("SELECT * FROM users WHERE id=" + user_input)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'sql_injection');
+    });
+
+    it('should detect .format() SQL injection', () => {
+      const code = `db.query("SELECT * FROM users WHERE id={}".format(request.args['id']))`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+
+    it('should detect user input in raw SQL', () => {
+      const code = `sql = "SELECT * FROM users WHERE name='" + request.form['name'] + "'"`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+
+    it('should allow parameterized queries', () => {
+      const code = `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`;
+      const findings = scanner.scan(code).filter(f => f.category === 'sql_injection');
+      assert.strictEqual(findings.length, 0);
+    });
+  });
+
+  describe('Command Injection', () => {
+    it('should detect subprocess with shell=True', () => {
+      const code = `subprocess.run(cmd, shell=True)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'command_injection');
+      assert.strictEqual(findings[0].risk, 'HIGH');
+    });
+
+    it('should detect os.system with f-string', () => {
+      const code = `os.system(f"ls {user_dir}")`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'command_injection');
+      assert.strictEqual(findings[0].risk, 'CRITICAL');
+    });
+
+    it('should detect child_process.exec with user input', () => {
+      const code = `child_process.exec("convert " + req.body.filename)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'command_injection');
+    });
+
+    it('should detect eval with request data', () => {
+      const code = `eval(request.body.expression)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+
+    it('should allow subprocess with shell=False', () => {
+      const code = `subprocess.run(["ls", "-la"], shell=False)`;
+      const findings = scanner.scan(code).filter(f => f.category === 'command_injection');
+      assert.strictEqual(findings.length, 0);
+    });
+  });
+
+  describe('XSS', () => {
+    it('should detect innerHTML with user input', () => {
+      const code = `element.innerHTML = request.query.content`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'xss');
+    });
+
+    it('should detect document.write with dynamic content', () => {
+      const code = `document.write(userContent)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'xss');
+    });
+
+    it('should detect Jinja2 |safe filter', () => {
+      const code = `<div>{{ user_input | safe }}</div>`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'xss');
+    });
+
+    it('should detect Markup with request data', () => {
+      const code = `html = Markup(request.form['comment'])`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'xss');
+    });
+  });
+
+  describe('Path Traversal', () => {
+    it('should detect open with user-controlled path', () => {
+      const code = `data = open(os.path.join(base, request.args['filename']))`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'path_traversal');
+    });
+
+    it('should detect send_file with user input', () => {
+      const code = `return send_file(request.args['path'])`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'path_traversal');
+    });
+  });
+
+  describe('Insecure Deserialization', () => {
+    it('should detect pickle.load', () => {
+      const code = `data = pickle.load(open("cache.pkl", "rb"))`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'insecure_deserialization');
+    });
+
+    it('should detect yaml.load without SafeLoader', () => {
+      const code = `config = yaml.load(data)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'insecure_deserialization');
+    });
+
+    it('should allow yaml.load with SafeLoader', () => {
+      const code = `config = yaml.load(data, Loader=yaml.SafeLoader)`;
+      const findings = scanner.scan(code).filter(f => f.category === 'insecure_deserialization');
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should detect eval with dynamic input', () => {
+      const code = `result = eval(user_expression)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+
+    it('should detect marshal.loads', () => {
+      const code = `obj = marshal.loads(data)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+  });
+
+  describe('Hardcoded Secrets', () => {
+    it('should detect hardcoded API key', () => {
+      const code = `api_key = "sk_live_abcdef1234567890abcdef"`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'hardcoded_secret');
+      assert.strictEqual(findings[0].risk, 'CRITICAL');
+    });
+
+    it('should detect AWS access key', () => {
+      const code = `aws_key = "AKIAIOSFODNN7EXAMPLE"`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.some(f => f.description.includes('AWS')));
+    });
+
+    it('should detect hardcoded password', () => {
+      const code = `password = "SuperSecret123!@#"`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+  });
+
+  describe('Insecure Crypto', () => {
+    it('should detect MD5 usage', () => {
+      const code = `hash = hashlib.md5(data)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'insecure_crypto');
+    });
+
+    it('should detect SHA1 usage', () => {
+      const code = `digest = hashlib.sha1(password.encode())`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+
+    it('should detect AES-ECB mode', () => {
+      const code = `cipher = AES.new(key, MODE_ECB)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'insecure_crypto');
+    });
+
+    it('should detect DES', () => {
+      const code = `cipher = DES.new(key)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+  });
+
+  describe('SSRF', () => {
+    it('should detect requests.get with user URL', () => {
+      const code = `response = requests.get(request.args['url'])`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'ssrf');
+    });
+
+    it('should detect fetch with user input', () => {
+      const code = `const resp = await fetch(req.body.targetUrl)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].category, 'ssrf');
+    });
+
+    it('should detect axios with user-controlled URL', () => {
+      const code = `const data = await axios.get(request.query.endpoint)`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+    });
+  });
+
+  describe('General', () => {
+    it('should return empty for clean code', () => {
+      const code = `
+function add(a: number, b: number): number {
+  return a + b;
+}
+
+const result = add(1, 2);
+console.log(result);
+`;
+      const findings = scanner.scan(code);
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should skip empty/short code', () => {
+      assert.deepStrictEqual(scanner.scan(''), []);
+      assert.deepStrictEqual(scanner.scan('x=1'), []);
+    });
+
+    it('should include line numbers', () => {
+      const code = `line1\nline2\ncursor.execute(f"SELECT {x}")`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length > 0);
+      assert.ok(findings[0].description.includes('Line 3'));
+    });
+
+    it('should include filename in metadata', () => {
+      const code = `pickle.load(open("data.pkl"))`;
+      const findings = scanner.scan(code, 'app.py');
+      assert.ok(findings.length > 0);
+      assert.strictEqual(findings[0].metadata.filename, 'app.py');
+    });
+
+    it('should detect multiple vulnerabilities in same code', () => {
+      const code = `
+password = "hunter2_secret_key123"
+data = pickle.load(open("cache.pkl"))
+os.system(f"rm {user_input}")
+`;
+      const findings = scanner.scan(code);
+      assert.ok(findings.length >= 3);
+      const categories = new Set(findings.map(f => f.category));
+      assert.ok(categories.has('hardcoded_secret'));
+      assert.ok(categories.has('insecure_deserialization'));
+      assert.ok(categories.has('command_injection'));
+    });
+  });
+
+  describe('scanToolOutput', () => {
+    it('should scan Write tool output', () => {
+      const findings = scanner.scanToolOutput('Write', {
+        file_path: '/app/handler.py',
+        content: `cursor.execute(f"SELECT * FROM users WHERE id={uid}")`,
+      });
+      assert.ok(findings.length > 0);
+    });
+
+    it('should scan Edit tool output', () => {
+      const findings = scanner.scanToolOutput('Edit', {
+        path: '/app/handler.py',
+        new_string: `os.system(f"ls {user_dir}")`,
+      });
+      assert.ok(findings.length > 0);
+    });
+
+    it('should skip non-write tools', () => {
+      const findings = scanner.scanToolOutput('Read', {
+        content: `eval(user_input)`,
+      });
+      assert.strictEqual(findings.length, 0);
+    });
+
+    it('should handle missing content', () => {
+      const findings = scanner.scanToolOutput('Write', { file_path: '/app/test.py' });
+      assert.strictEqual(findings.length, 0);
     });
   });
 });
