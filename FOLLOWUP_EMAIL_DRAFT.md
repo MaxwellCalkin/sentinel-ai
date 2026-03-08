@@ -15,7 +15,7 @@ Quick follow-up on my message from Saturday. I've been shipping fast — Sentine
 
 **Obfuscation Detection** — Catches encoded attack payloads that bypass keyword filters: base64-encoded prompt overrides, hex-encoded shell commands, ROT13-obfuscated instructions, leetspeak variants. The deterministic first-pass filter that frees the model to focus on harder safety questions.
 
-Current state: 10 scanners, 481 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged).
+Current state: 10 scanners, 481 tests, 546-case benchmark at 100% accuracy, sub-millisecond latency, one dependency (`regex`). Dual SDKs — Python and TypeScript (standalone scanning, zero deps). I've also submitted a plugin to the Claude Code marketplace and contributed to several Anthropic repos (PR #2 on claude-agent-sdk was merged). 16+ substantive comments on Claude Code security issues.
 
 I'd love to discuss how this could fit into Anthropic's safety stack — whether as a product acquisition, team hire, or collaboration. Happy to do a 15-minute demo.
 
@@ -38,12 +38,15 @@ Following up from Saturday. Sentinel AI has evolved significantly — here's a q
 - Code vulnerability scanner — OWASP detection in LLM-generated code
 - Claude Code attack vector detection (CVE-2025-59536, CVE-2026-21852)
 - 10 scanners, 481 tests, 546-case benchmark at 100% accuracy
+- Dual SDKs: Python + TypeScript (standalone, zero runtime deps)
+- GitHub Action for CI/CD security scanning
 
 **Anthropic ecosystem integration:**
 - PR #2 on claude-agent-sdk — merged
-- PRs open on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
+- PRs on claude-quickstarts, claude-code-security-review, knowledge-work-plugins
 - Plugin submitted to Claude Code marketplace
-- Active engagement on Claude Code security issues (PII redaction, hook bypass, marketplace safety)
+- 16+ substantive comments on Claude Code security issues (#32029 AI self-approval, #32016 subagent prompt scanning, #80 silent scan failures, etc.)
+- Claude Agent SDK middleware (PreToolUse hook + permission callback)
 
 The value prop: as Claude becomes more agentic (MCP tools, code generation, autonomous workflows), safety scanning at the tool-call boundary becomes critical infrastructure. Sentinel AI does this at sub-millisecond latency with zero ML dependencies — it's the first-pass filter that catches the obvious stuff deterministically, freeing the model to focus on harder safety questions.
 
