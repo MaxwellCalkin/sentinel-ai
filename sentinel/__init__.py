@@ -167,8 +167,10 @@ from sentinel.output_diversity import OutputDiversityChecker, DiversityScore, Co
 from sentinel.prompt_complexity import PromptComplexity, ComplexityScore, ComplexityComparison, ComplexityStats
 from sentinel.content_classifier_v2 import ContentClassifierV2, LabelDefinition, ClassificationLabel, ClassificationResult, ClassifierConfig, ClassifierStats
 from sentinel.response_coherence import ResponseCoherence, CoherenceScore, CoherenceIssue, CoherenceReport, CoherenceStats
+from sentinel.embedding_validator import EmbeddingValidator, EmbeddingCheck, EmbeddingReport, EmbeddingProfile, ValidatorStats as EmbeddingValidatorStats
+from sentinel.safety_ensemble import SafetyEnsemble, CheckerVote, EnsembleDecision, EnsembleConfig, EnsembleStats
 
-__version__ = "0.72.0"
+__version__ = "0.73.0"
 
 __all__ = [
     "SentinelGuard",
@@ -642,4 +644,14 @@ __all__ = [
     "CoherenceIssue",
     "CoherenceReport",
     "CoherenceStats",
+    "EmbeddingValidator",
+    "EmbeddingCheck",
+    "EmbeddingReport",
+    "EmbeddingProfile",
+    "EmbeddingValidatorStats",
+    "SafetyEnsemble",
+    "CheckerVote",
+    "EnsembleDecision",
+    "EnsembleConfig",
+    "EnsembleStats",
 ]
