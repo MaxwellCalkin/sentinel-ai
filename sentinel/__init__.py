@@ -95,8 +95,10 @@ from sentinel.tool_call_validator import ToolCallValidator, ToolValidationResult
 from sentinel.prompt_shield import PromptShield, ShieldResult
 from sentinel.env_security import EnvSecurityChecker, EnvSecurityReport, SecurityIssue as EnvSecurityIssue
 from sentinel.data_masker import DataMasker, MaskResult
+from sentinel.multi_model import MultiModelGuard, ConsistencyResult
+from sentinel.factuality import FactualityChecker, FactualityResult, FactClaim
 
-__version__ = "0.36.0"
+__version__ = "0.37.0"
 
 __all__ = [
     "SentinelGuard",
@@ -301,4 +303,9 @@ __all__ = [
     "EnvSecurityIssue",
     "DataMasker",
     "MaskResult",
+    "MultiModelGuard",
+    "ConsistencyResult",
+    "FactualityChecker",
+    "FactualityResult",
+    "FactClaim",
 ]
