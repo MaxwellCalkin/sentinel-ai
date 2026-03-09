@@ -161,8 +161,10 @@ from sentinel.output_tracer import OutputTracer, Span as TracerSpan, TraceTree, 
 from sentinel.claim_extractor import ClaimExtractor, ExtractedClaim, ExtractionResult, ExtractorStats
 from sentinel.safety_orchestrator import SafetyOrchestrator, PipelineComponent, ComponentOutcome, PipelineResult, OrchestratorStats
 from sentinel.interaction_logger import InteractionLogger, Interaction, InteractionSummary
+from sentinel.prompt_validator import PromptValidator, ValidationRule, ValidationIssue, ValidationReport, ValidatorStats
+from sentinel.safety_middleware import SafetyMiddleware, MiddlewareHook, HookResult, MiddlewareResult, MiddlewareStats
 
-__version__ = "0.69.0"
+__version__ = "0.70.0"
 
 __all__ = [
     "SentinelGuard",
@@ -606,4 +608,14 @@ __all__ = [
     "InteractionLogger",
     "Interaction",
     "InteractionSummary",
+    "PromptValidator",
+    "ValidationRule",
+    "ValidationIssue",
+    "ValidationReport",
+    "ValidatorStats",
+    "SafetyMiddleware",
+    "MiddlewareHook",
+    "HookResult",
+    "MiddlewareResult",
+    "MiddlewareStats",
 ]
