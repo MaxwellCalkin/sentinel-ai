@@ -171,8 +171,10 @@ from sentinel.embedding_validator import EmbeddingValidator, EmbeddingCheck, Emb
 from sentinel.safety_ensemble import SafetyEnsemble, CheckerVote, EnsembleDecision, EnsembleConfig, EnsembleStats
 from sentinel.token_estimator import TokenEstimator, TokenEstimate, CostEstimate, EstimatorStats
 from sentinel.safety_logger import SafetyLogger, SafetyLogEntry, LogFilter, LogSummary, LoggerStats
+from sentinel.input_normalizer import InputNormalizer, NormalizationStep, NormalizationResult, NormalizerConfig, NormalizerStats
+from sentinel.output_ranker import OutputRanker, RankingCriteria, CandidateScore, RankingResult, RankerStats
 
-__version__ = "0.74.0"
+__version__ = "0.75.0"
 
 __all__ = [
     "SentinelGuard",
@@ -665,4 +667,14 @@ __all__ = [
     "LogFilter",
     "LogSummary",
     "LoggerStats",
+    "InputNormalizer",
+    "NormalizationStep",
+    "NormalizationResult",
+    "NormalizerConfig",
+    "NormalizerStats",
+    "OutputRanker",
+    "RankingCriteria",
+    "CandidateScore",
+    "RankingResult",
+    "RankerStats",
 ]
