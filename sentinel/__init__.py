@@ -153,8 +153,10 @@ from sentinel.response_validator import ResponseValidator, ResponseCheck, Respon
 from sentinel.safety_gateway import SafetyGateway, GatewayCheck, GatewayCheckResult, GatewayResult, GatewayStats
 from sentinel.adversarial_probe import AdversarialProbe, Probe, ProbeResult, ProbeReport
 from sentinel.decision_logger import DecisionLogger, Decision, DecisionSummary
+from sentinel.context_validator import ContextValidator, GroundingCheck, GroundingResult, GroundingStats
+from sentinel.policy_composer import PolicyComposer, ComposedPolicy, PolicyApplyResult, PolicyDiff, PolicyStats
 
-__version__ = "0.65.0"
+__version__ = "0.66.0"
 
 __all__ = [
     "SentinelGuard",
@@ -565,4 +567,13 @@ __all__ = [
     "DecisionLogger",
     "Decision",
     "DecisionSummary",
+    "ContextValidator",
+    "GroundingCheck",
+    "GroundingResult",
+    "GroundingStats",
+    "PolicyComposer",
+    "ComposedPolicy",
+    "PolicyApplyResult",
+    "PolicyDiff",
+    "PolicyStats",
 ]
