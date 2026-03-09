@@ -119,8 +119,10 @@ from sentinel.output_benchmark import OutputBenchmark, BenchmarkScore, Dimension
 from sentinel.event_bus import EventBus, Event, EventStats
 from sentinel.prompt_analytics import PromptAnalytics, PromptRecord, AnalyticsSummary
 from sentinel.model_card import ModelCard, CardValidation, SafetyRating, IntendedUse
+from sentinel.dependency_guard import DependencyGuard, PackageCheck, DependencyReport, TyposquatMatch
+from sentinel.schema_enforcer import SchemaEnforcer, EnforcementResult, CoercionResult
 
-__version__ = "0.48.0"
+__version__ = "0.49.0"
 
 __all__ = [
     "SentinelGuard",
@@ -392,4 +394,11 @@ __all__ = [
     "CardValidation",
     "SafetyRating",
     "IntendedUse",
+    "DependencyGuard",
+    "PackageCheck",
+    "DependencyReport",
+    "TyposquatMatch",
+    "SchemaEnforcer",
+    "EnforcementResult",
+    "CoercionResult",
 ]
