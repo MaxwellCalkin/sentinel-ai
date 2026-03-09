@@ -79,8 +79,10 @@ from sentinel.ratelimit_guard import RateLimitGuard, RateLimitResult, BucketStat
 from sentinel.diff_privacy import DiffPrivacy, NoiseResult, PrivateHistogram, BudgetExhausted as PrivacyBudgetExhausted
 from sentinel.model_router import ModelRouter as ContentModelRouter, RouteDecision as ContentRouteDecision, RouterStats
 from sentinel.incident_tracker import IncidentTracker, Incident, IncidentSeverity, IncidentState, IncidentSummary
+from sentinel.policy_engine import PolicyEngine, PolicyResult, PolicyAction, PolicyViolation
+from sentinel.compliance_audit import ComplianceAuditor, AuditReport, CheckResult, CheckStatus
 
-__version__ = "0.28.0"
+__version__ = "0.29.0"
 
 __all__ = [
     "SentinelGuard",
@@ -242,4 +244,12 @@ __all__ = [
     "IncidentSeverity",
     "IncidentState",
     "IncidentSummary",
+    "PolicyEngine",
+    "PolicyResult",
+    "PolicyAction",
+    "PolicyViolation",
+    "ComplianceAuditor",
+    "AuditReport",
+    "CheckResult",
+    "CheckStatus",
 ]
