@@ -175,8 +175,10 @@ from sentinel.input_normalizer import InputNormalizer, NormalizationStep, Normal
 from sentinel.output_ranker import OutputRanker, RankingCriteria, CandidateScore, RankingResult, RankerStats
 from sentinel.conversation_safety import ConversationSafety, TurnAnalysis, EscalationPattern, ConversationReport, ConversationSafetyStats
 from sentinel.model_guard import ModelGuard, ModelConfig, ConfigIssue, GuardReport as ModelGuardReport, GuardPolicy as ModelGuardPolicy, ModelGuardStats
+from sentinel.payload_analyzer import PayloadAnalyzer, PayloadField, PayloadThreat, PayloadReport, AnalyzerConfig, AnalyzerStats as PayloadAnalyzerStats
+from sentinel.compliance_checker import ComplianceChecker, ComplianceRule, Evidence, ComplianceResult, ComplianceOverview, CheckerStats
 
-__version__ = "0.76.0"
+__version__ = "0.77.0"
 
 __all__ = [
     "SentinelGuard",
@@ -690,4 +692,16 @@ __all__ = [
     "ModelGuardReport",
     "ModelGuardPolicy",
     "ModelGuardStats",
+    "PayloadAnalyzer",
+    "PayloadField",
+    "PayloadThreat",
+    "PayloadReport",
+    "AnalyzerConfig",
+    "PayloadAnalyzerStats",
+    "ComplianceChecker",
+    "ComplianceRule",
+    "Evidence",
+    "ComplianceResult",
+    "ComplianceOverview",
+    "CheckerStats",
 ]
