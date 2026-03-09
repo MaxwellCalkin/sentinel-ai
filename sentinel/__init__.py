@@ -113,8 +113,10 @@ from sentinel.usage_quota import UsageQuota, QuotaStatus
 from sentinel.sensitivity_classifier import SensitivityClassifier, SensitivityResult
 from sentinel.conversation_memory import ConversationMemory, MemoryMessage, MemoryStats
 from sentinel.guardrail_metrics import GuardrailMetrics, CounterValue, GaugeValue, HistogramValue
+from sentinel.token_splitter import TokenSplitter, TextChunk
+from sentinel.access_control import AccessControl, AccessResult as AccessCheckResult
 
-__version__ = "0.45.0"
+__version__ = "0.46.0"
 
 __all__ = [
     "SentinelGuard",
@@ -369,4 +371,8 @@ __all__ = [
     "CounterValue",
     "GaugeValue",
     "HistogramValue",
+    "TokenSplitter",
+    "TextChunk",
+    "AccessControl",
+    "AccessCheckResult",
 ]
