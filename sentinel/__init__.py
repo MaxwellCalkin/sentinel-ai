@@ -187,8 +187,10 @@ from sentinel.semantic_validator import SemanticValidator, SemanticMatch, Semant
 from sentinel.threat_intelligence import ThreatIntelligence, ThreatIndicator, ThreatMatch, ThreatScanResult, ThreatFeedStats
 from sentinel.output_filter import OutputFilter, FilterRule, FilterMatch, FilterOutput, FilterStats as OutputFilterStats
 from sentinel.prompt_augmentor import PromptAugmentor, Augmentation, AugmentedPrompt, AugmentorConfig, AugmentorStats
+from sentinel.response_quality import ResponseQuality, QualityDimension, QualityAssessment, QualityConfig, QualityStats
+from sentinel.safety_config import SafetyConfig, ConfigValue, ConfigProfile, ConfigValidation, ConfigStats
 
-__version__ = "0.82.0"
+__version__ = "0.83.0"
 
 __all__ = [
     "SentinelGuard",
@@ -767,4 +769,14 @@ __all__ = [
     "AugmentedPrompt",
     "AugmentorConfig",
     "AugmentorStats",
+    "ResponseQuality",
+    "QualityDimension",
+    "QualityAssessment",
+    "QualityConfig",
+    "QualityStats",
+    "SafetyConfig",
+    "ConfigValue",
+    "ConfigProfile",
+    "ConfigValidation",
+    "ConfigStats",
 ]
