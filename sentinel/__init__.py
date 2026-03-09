@@ -121,8 +121,10 @@ from sentinel.prompt_analytics import PromptAnalytics, PromptRecord, AnalyticsSu
 from sentinel.model_card import ModelCard, CardValidation, SafetyRating, IntendedUse
 from sentinel.dependency_guard import DependencyGuard, PackageCheck, DependencyReport, TyposquatMatch
 from sentinel.schema_enforcer import SchemaEnforcer, EnforcementResult, CoercionResult
+from sentinel.risk_scorecard import RiskScorecard, ScorecardResult, Finding as ScorecardFinding, ComparisonResult as ScorecardComparison
+from sentinel.prompt_registry import PromptRegistry, RegistryEntry, RegistryStats
 
-__version__ = "0.49.0"
+__version__ = "0.50.0"
 
 __all__ = [
     "SentinelGuard",
@@ -401,4 +403,11 @@ __all__ = [
     "SchemaEnforcer",
     "EnforcementResult",
     "CoercionResult",
+    "RiskScorecard",
+    "ScorecardResult",
+    "ScorecardFinding",
+    "ScorecardComparison",
+    "PromptRegistry",
+    "RegistryEntry",
+    "RegistryStats",
 ]
