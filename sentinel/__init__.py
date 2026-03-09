@@ -62,8 +62,9 @@ from sentinel.ab_tester import ABTester, ABReport, VariantStats
 from sentinel.retry_policy import RetryPolicy, RetryResult
 from sentinel.embedding_guard import EmbeddingGuard, SemanticResult, SemanticMatch
 from sentinel.groundedness import GroundednessChecker, GroundednessResult, Claim
+from sentinel.prompt_versioner import PromptVersioner, PromptVersion, PromptDiff
 
-__version__ = "0.21.0"
+__version__ = "0.22.0"
 
 __all__ = [
     "SentinelGuard",
@@ -177,4 +178,7 @@ __all__ = [
     "GroundednessChecker",
     "GroundednessResult",
     "Claim",
+    "PromptVersioner",
+    "PromptVersion",
+    "PromptDiff",
 ]
