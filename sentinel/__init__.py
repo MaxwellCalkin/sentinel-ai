@@ -127,8 +127,10 @@ from sentinel.safety_benchmark import SafetyBenchmark, BenchmarkCase, BenchmarkR
 from sentinel.compliance_report import ComplianceReport, ReportOutput, FrameworkSummary, Control as ComplianceControl
 from sentinel.threat_model import ThreatModel, ThreatAnalysis, Threat, Component as ThreatComponent
 from sentinel.data_lineage import DataLineage, LineageNode, LineageEdge, FlowRecord, LineageValidation
+from sentinel.secret_rotator import SecretRotator, RotationStatus, RotationReport, RotationEvent
+from sentinel.attack_surface import AttackSurface, SurfaceAnalysis, Endpoint, DataFlow as AttackDataFlow, Vulnerability
 
-__version__ = "0.52.0"
+__version__ = "0.53.0"
 
 __all__ = [
     "SentinelGuard",
@@ -431,4 +433,13 @@ __all__ = [
     "LineageEdge",
     "FlowRecord",
     "LineageValidation",
+    "SecretRotator",
+    "RotationStatus",
+    "RotationReport",
+    "RotationEvent",
+    "AttackSurface",
+    "SurfaceAnalysis",
+    "Endpoint",
+    "AttackDataFlow",
+    "Vulnerability",
 ]
