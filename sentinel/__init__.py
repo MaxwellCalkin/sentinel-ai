@@ -103,8 +103,10 @@ from sentinel.prompt_optimizer import PromptOptimizer, OptimizationResult
 from sentinel.contextual_bandit import ContextualBandit, ArmStats, BanditResult, BanditReport
 from sentinel.explainability import ExplainabilityTracer, Explanation, TraceRecord, CheckRecord
 from sentinel.multi_turn import MultiTurnAnalyzer, MultiTurnReport, Turn
+from sentinel.semantic_router import SemanticRouter, RouteResult as SemanticRouteResult
+from sentinel.config_validator import ConfigValidator, ConfigResult, ConfigIssue
 
-__version__ = "0.40.0"
+__version__ = "0.41.0"
 
 __all__ = [
     "SentinelGuard",
@@ -332,4 +334,9 @@ __all__ = [
     "MultiTurnAnalyzer",
     "MultiTurnReport",
     "Turn",
+    "SemanticRouter",
+    "SemanticRouteResult",
+    "ConfigValidator",
+    "ConfigResult",
+    "ConfigIssue",
 ]
