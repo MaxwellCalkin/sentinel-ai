@@ -91,8 +91,10 @@ from sentinel.code_exec_guard import CodeExecGuard, CodeExecResult, CodeThreat
 from sentinel.prompt_chain import PromptChain, ChainResult
 from sentinel.model_fingerprint import ModelFingerprint, FingerprintResult
 from sentinel.safety_dashboard import SafetyDashboard, DashboardSummary, TimeWindow
+from sentinel.tool_call_validator import ToolCallValidator, ToolValidationResult
+from sentinel.prompt_shield import PromptShield, ShieldResult
 
-__version__ = "0.34.0"
+__version__ = "0.35.0"
 
 __all__ = [
     "SentinelGuard",
@@ -288,4 +290,8 @@ __all__ = [
     "SafetyDashboard",
     "DashboardSummary",
     "TimeWindow",
+    "ToolCallValidator",
+    "ToolValidationResult",
+    "PromptShield",
+    "ShieldResult",
 ]
