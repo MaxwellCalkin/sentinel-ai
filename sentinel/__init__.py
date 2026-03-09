@@ -135,8 +135,10 @@ from sentinel.token_tracer import TokenTracer, TraceEntry, TracerReport
 from sentinel.safety_policy import SafetyPolicy, PolicyRule, PolicyEvaluation, RuleMatch
 from sentinel.privacy_guard import PrivacyGuard, PrivacyCheck, MinimizationResult, PrivacyReport
 from sentinel.response_filter import ResponseFilter, FilterResult, FilterStats
+from sentinel.intent_classifier import IntentClassifier, ClassificationOutput, IntentDef, ClassifierStats
+from sentinel.conversation_analyzer import ConversationAnalyzer, ConversationAnalysis as ConvAnalysis, QualityScore, EngagementMetrics
 
-__version__ = "0.56.0"
+__version__ = "0.57.0"
 
 __all__ = [
     "SentinelGuard",
@@ -469,4 +471,12 @@ __all__ = [
     "ResponseFilter",
     "FilterResult",
     "FilterStats",
+    "IntentClassifier",
+    "ClassificationOutput",
+    "IntentDef",
+    "ClassifierStats",
+    "ConversationAnalyzer",
+    "ConvAnalysis",
+    "QualityScore",
+    "EngagementMetrics",
 ]
