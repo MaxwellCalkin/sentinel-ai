@@ -163,8 +163,10 @@ from sentinel.safety_orchestrator import SafetyOrchestrator, PipelineComponent, 
 from sentinel.interaction_logger import InteractionLogger, Interaction, InteractionSummary
 from sentinel.prompt_validator import PromptValidator, ValidationRule, ValidationIssue, ValidationReport, ValidatorStats
 from sentinel.safety_middleware import SafetyMiddleware, MiddlewareHook, HookResult, MiddlewareResult, MiddlewareStats
+from sentinel.output_diversity import OutputDiversityChecker, DiversityScore, ComparisonResult, DiversityReport, DiversityStats
+from sentinel.prompt_complexity import PromptComplexity, ComplexityScore, ComplexityComparison, ComplexityStats
 
-__version__ = "0.70.0"
+__version__ = "0.71.0"
 
 __all__ = [
     "SentinelGuard",
@@ -618,4 +620,13 @@ __all__ = [
     "HookResult",
     "MiddlewareResult",
     "MiddlewareStats",
+    "OutputDiversityChecker",
+    "DiversityScore",
+    "ComparisonResult",
+    "DiversityReport",
+    "DiversityStats",
+    "PromptComplexity",
+    "ComplexityScore",
+    "ComplexityComparison",
+    "ComplexityStats",
 ]
