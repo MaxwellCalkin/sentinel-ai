@@ -193,8 +193,10 @@ from sentinel.prompt_fuzzer import PromptFuzzer, FuzzMutation, FuzzedPrompt, Fuz
 from sentinel.safety_monitor import SafetyMonitor, MetricPoint, AlertRule, Alert as MonitorAlert, MonitorReport, MonitorStats
 from sentinel.instruction_parser import InstructionParser, Instruction, ConflictPair, ParseResult, ParserStats
 from sentinel.data_flow_guard import DataFlowGuard, FlowNode, FlowConnection, FlowViolation, FlowAnalysis, FlowStats
+from sentinel.response_safety import ResponseSafety, SafetySignal, SafetyAssessment, SafetyThresholds, SafetyAssessmentStats
+from sentinel.prompt_history import PromptHistory, PromptVersion, PromptDiff, PromptTimeline, HistoryStats
 
-__version__ = "0.85.0"
+__version__ = "0.86.0"
 
 __all__ = [
     "SentinelGuard",
@@ -805,4 +807,14 @@ __all__ = [
     "FlowViolation",
     "FlowAnalysis",
     "FlowStats",
+    "ResponseSafety",
+    "SafetySignal",
+    "SafetyAssessment",
+    "SafetyThresholds",
+    "SafetyAssessmentStats",
+    "PromptHistory",
+    "PromptVersion",
+    "PromptDiff",
+    "PromptTimeline",
+    "HistoryStats",
 ]
