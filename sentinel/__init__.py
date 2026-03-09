@@ -159,8 +159,10 @@ from sentinel.toxicity_filter import ToxicityFilter, ToxicityMatch, ToxicityResu
 from sentinel.request_throttler import RequestThrottler, ThrottleStatus, RequestDecision, ThrottlerStats
 from sentinel.output_tracer import OutputTracer, Span as TracerSpan, TraceTree, SpanSummary
 from sentinel.claim_extractor import ClaimExtractor, ExtractedClaim, ExtractionResult, ExtractorStats
+from sentinel.safety_orchestrator import SafetyOrchestrator, PipelineComponent, ComponentOutcome, PipelineResult, OrchestratorStats
+from sentinel.interaction_logger import InteractionLogger, Interaction, InteractionSummary
 
-__version__ = "0.68.0"
+__version__ = "0.69.0"
 
 __all__ = [
     "SentinelGuard",
@@ -596,4 +598,12 @@ __all__ = [
     "ExtractedClaim",
     "ExtractionResult",
     "ExtractorStats",
+    "SafetyOrchestrator",
+    "PipelineComponent",
+    "ComponentOutcome",
+    "PipelineResult",
+    "OrchestratorStats",
+    "InteractionLogger",
+    "Interaction",
+    "InteractionSummary",
 ]
