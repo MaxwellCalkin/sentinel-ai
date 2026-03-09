@@ -115,8 +115,10 @@ from sentinel.conversation_memory import ConversationMemory, MemoryMessage, Memo
 from sentinel.guardrail_metrics import GuardrailMetrics, CounterValue, GaugeValue, HistogramValue
 from sentinel.token_splitter import TokenSplitter, TextChunk
 from sentinel.access_control import AccessControl, AccessResult as AccessCheckResult
+from sentinel.output_benchmark import OutputBenchmark, BenchmarkScore, DimensionScore
+from sentinel.event_bus import EventBus, Event, EventStats
 
-__version__ = "0.46.0"
+__version__ = "0.47.0"
 
 __all__ = [
     "SentinelGuard",
@@ -375,4 +377,10 @@ __all__ = [
     "TextChunk",
     "AccessControl",
     "AccessCheckResult",
+    "OutputBenchmark",
+    "BenchmarkScore",
+    "DimensionScore",
+    "EventBus",
+    "Event",
+    "EventStats",
 ]
