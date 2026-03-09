@@ -99,8 +99,10 @@ from sentinel.multi_model import MultiModelGuard, ConsistencyResult
 from sentinel.factuality import FactualityChecker, FactualityResult, FactClaim
 from sentinel.output_formatter import OutputFormatter, FormatResult
 from sentinel.feedback_loop import FeedbackLoop, FeedbackEntry, FeedbackReport
+from sentinel.prompt_optimizer import PromptOptimizer, OptimizationResult
+from sentinel.contextual_bandit import ContextualBandit, ArmStats, BanditResult, BanditReport
 
-__version__ = "0.38.0"
+__version__ = "0.39.0"
 
 __all__ = [
     "SentinelGuard",
@@ -315,4 +317,10 @@ __all__ = [
     "FeedbackLoop",
     "FeedbackEntry",
     "FeedbackReport",
+    "PromptOptimizer",
+    "OptimizationResult",
+    "ContextualBandit",
+    "ArmStats",
+    "BanditResult",
+    "BanditReport",
 ]
