@@ -157,8 +157,10 @@ from sentinel.context_validator import ContextValidator, GroundingCheck, Groundi
 from sentinel.policy_composer import PolicyComposer, ComposedPolicy, PolicyApplyResult, PolicyDiff, PolicyStats
 from sentinel.toxicity_filter import ToxicityFilter, ToxicityMatch, ToxicityResult, ToxicityStats
 from sentinel.request_throttler import RequestThrottler, ThrottleStatus, RequestDecision, ThrottlerStats
+from sentinel.output_tracer import OutputTracer, Span as TracerSpan, TraceTree, SpanSummary
+from sentinel.claim_extractor import ClaimExtractor, ExtractedClaim, ExtractionResult, ExtractorStats
 
-__version__ = "0.67.0"
+__version__ = "0.68.0"
 
 __all__ = [
     "SentinelGuard",
@@ -586,4 +588,12 @@ __all__ = [
     "ThrottleStatus",
     "RequestDecision",
     "ThrottlerStats",
+    "OutputTracer",
+    "TracerSpan",
+    "TraceTree",
+    "SpanSummary",
+    "ClaimExtractor",
+    "ExtractedClaim",
+    "ExtractionResult",
+    "ExtractorStats",
 ]
