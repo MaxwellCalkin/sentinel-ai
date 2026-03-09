@@ -173,8 +173,10 @@ from sentinel.token_estimator import TokenEstimator, TokenEstimate, CostEstimate
 from sentinel.safety_logger import SafetyLogger, SafetyLogEntry, LogFilter, LogSummary, LoggerStats
 from sentinel.input_normalizer import InputNormalizer, NormalizationStep, NormalizationResult, NormalizerConfig, NormalizerStats
 from sentinel.output_ranker import OutputRanker, RankingCriteria, CandidateScore, RankingResult, RankerStats
+from sentinel.conversation_safety import ConversationSafety, TurnAnalysis, EscalationPattern, ConversationReport, ConversationSafetyStats
+from sentinel.model_guard import ModelGuard, ModelConfig, ConfigIssue, GuardReport as ModelGuardReport, GuardPolicy as ModelGuardPolicy, ModelGuardStats
 
-__version__ = "0.75.0"
+__version__ = "0.76.0"
 
 __all__ = [
     "SentinelGuard",
@@ -677,4 +679,15 @@ __all__ = [
     "CandidateScore",
     "RankingResult",
     "RankerStats",
+    "ConversationSafety",
+    "TurnAnalysis",
+    "EscalationPattern",
+    "ConversationReport",
+    "ConversationSafetyStats",
+    "ModelGuard",
+    "ModelConfig",
+    "ConfigIssue",
+    "ModelGuardReport",
+    "ModelGuardPolicy",
+    "ModelGuardStats",
 ]
