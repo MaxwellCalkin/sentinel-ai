@@ -133,8 +133,10 @@ from sentinel.alert_manager import AlertManager, Alert, AlertStats
 from sentinel.context_guard import ContextGuard, ContextCheckResult, ConversationCheckResult, GuardStats as ContextGuardStats
 from sentinel.token_tracer import TokenTracer, TraceEntry, TracerReport
 from sentinel.safety_policy import SafetyPolicy, PolicyRule, PolicyEvaluation, RuleMatch
+from sentinel.privacy_guard import PrivacyGuard, PrivacyCheck, MinimizationResult, PrivacyReport
+from sentinel.response_filter import ResponseFilter, FilterResult, FilterStats
 
-__version__ = "0.55.0"
+__version__ = "0.56.0"
 
 __all__ = [
     "SentinelGuard",
@@ -460,4 +462,11 @@ __all__ = [
     "PolicyRule",
     "PolicyEvaluation",
     "RuleMatch",
+    "PrivacyGuard",
+    "PrivacyCheck",
+    "MinimizationResult",
+    "PrivacyReport",
+    "ResponseFilter",
+    "FilterResult",
+    "FilterStats",
 ]
