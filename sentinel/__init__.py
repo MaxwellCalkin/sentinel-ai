@@ -56,8 +56,9 @@ from sentinel.context_manager import ContextWindowManager
 from sentinel.prompt_template import PromptTemplate, PromptLibrary
 from sentinel.guardrail_chain import GuardrailChain, Step as GuardrailStep, OnFail
 from sentinel.response_classifier import ResponseClassifier, ResponseCategory
+from sentinel.canary_detector import CanaryDetector, CanaryResult, CanaryMatch
 
-__version__ = "0.18.0"
+__version__ = "0.19.0"
 
 __all__ = [
     "SentinelGuard",
@@ -153,4 +154,7 @@ __all__ = [
     "OnFail",
     "ResponseClassifier",
     "ResponseCategory",
+    "CanaryDetector",
+    "CanaryResult",
+    "CanaryMatch",
 ]
