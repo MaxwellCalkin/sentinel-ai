@@ -155,8 +155,10 @@ from sentinel.adversarial_probe import AdversarialProbe, Probe, ProbeResult, Pro
 from sentinel.decision_logger import DecisionLogger, Decision, DecisionSummary
 from sentinel.context_validator import ContextValidator, GroundingCheck, GroundingResult, GroundingStats
 from sentinel.policy_composer import PolicyComposer, ComposedPolicy, PolicyApplyResult, PolicyDiff, PolicyStats
+from sentinel.toxicity_filter import ToxicityFilter, ToxicityMatch, ToxicityResult, ToxicityStats
+from sentinel.request_throttler import RequestThrottler, ThrottleStatus, RequestDecision, ThrottlerStats
 
-__version__ = "0.66.0"
+__version__ = "0.67.0"
 
 __all__ = [
     "SentinelGuard",
@@ -576,4 +578,12 @@ __all__ = [
     "PolicyApplyResult",
     "PolicyDiff",
     "PolicyStats",
+    "ToxicityFilter",
+    "ToxicityMatch",
+    "ToxicityResult",
+    "ToxicityStats",
+    "RequestThrottler",
+    "ThrottleStatus",
+    "RequestDecision",
+    "ThrottlerStats",
 ]
