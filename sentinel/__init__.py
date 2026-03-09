@@ -165,8 +165,10 @@ from sentinel.prompt_validator import PromptValidator, ValidationRule, Validatio
 from sentinel.safety_middleware import SafetyMiddleware, MiddlewareHook, HookResult, MiddlewareResult, MiddlewareStats
 from sentinel.output_diversity import OutputDiversityChecker, DiversityScore, ComparisonResult, DiversityReport, DiversityStats
 from sentinel.prompt_complexity import PromptComplexity, ComplexityScore, ComplexityComparison, ComplexityStats
+from sentinel.content_classifier_v2 import ContentClassifierV2, LabelDefinition, ClassificationLabel, ClassificationResult, ClassifierConfig, ClassifierStats
+from sentinel.response_coherence import ResponseCoherence, CoherenceScore, CoherenceIssue, CoherenceReport, CoherenceStats
 
-__version__ = "0.71.0"
+__version__ = "0.72.0"
 
 __all__ = [
     "SentinelGuard",
@@ -629,4 +631,15 @@ __all__ = [
     "ComplexityScore",
     "ComplexityComparison",
     "ComplexityStats",
+    "ContentClassifierV2",
+    "LabelDefinition",
+    "ClassificationLabel",
+    "ClassificationResult",
+    "ClassifierConfig",
+    "ClassifierStats",
+    "ResponseCoherence",
+    "CoherenceScore",
+    "CoherenceIssue",
+    "CoherenceReport",
+    "CoherenceStats",
 ]
