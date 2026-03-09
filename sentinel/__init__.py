@@ -87,8 +87,10 @@ from sentinel.context_isolation import ContextIsolation, IsolationResult, Isolat
 from sentinel.semantic_cache import SemanticCache, CacheHit, CacheStats
 from sentinel.input_validator import InputValidator, InputValidationResult
 from sentinel.anomaly_detector import AnomalyDetector, AnomalyReport, AnomalyFlag
+from sentinel.code_exec_guard import CodeExecGuard, CodeExecResult, CodeThreat
+from sentinel.prompt_chain import PromptChain, ChainResult
 
-__version__ = "0.32.0"
+__version__ = "0.33.0"
 
 __all__ = [
     "SentinelGuard",
@@ -274,4 +276,9 @@ __all__ = [
     "AnomalyDetector",
     "AnomalyReport",
     "AnomalyFlag",
+    "CodeExecGuard",
+    "CodeExecResult",
+    "CodeThreat",
+    "PromptChain",
+    "ChainResult",
 ]
