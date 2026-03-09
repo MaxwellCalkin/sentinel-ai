@@ -63,8 +63,11 @@ from sentinel.retry_policy import RetryPolicy, RetryResult
 from sentinel.embedding_guard import EmbeddingGuard, SemanticResult, SemanticMatch
 from sentinel.groundedness import GroundednessChecker, GroundednessResult, Claim
 from sentinel.prompt_versioner import PromptVersioner, PromptVersion, PromptDiff
+from sentinel.circuit_breaker import CircuitBreaker, CircuitState, CircuitOpenError
+from sentinel.permission_guard import PermissionGuard, PermissionResult
+from sentinel.content_filter import ContentFilter, Category as ContentCategory, FilterResult
 
-__version__ = "0.22.0"
+__version__ = "0.23.0"
 
 __all__ = [
     "SentinelGuard",
@@ -181,4 +184,12 @@ __all__ = [
     "PromptVersioner",
     "PromptVersion",
     "PromptDiff",
+    "CircuitBreaker",
+    "CircuitState",
+    "CircuitOpenError",
+    "PermissionGuard",
+    "PermissionResult",
+    "ContentFilter",
+    "ContentCategory",
+    "FilterResult",
 ]
