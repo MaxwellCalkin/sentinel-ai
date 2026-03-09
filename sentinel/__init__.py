@@ -177,8 +177,10 @@ from sentinel.conversation_safety import ConversationSafety, TurnAnalysis, Escal
 from sentinel.model_guard import ModelGuard, ModelConfig, ConfigIssue, GuardReport as ModelGuardReport, GuardPolicy as ModelGuardPolicy, ModelGuardStats
 from sentinel.payload_analyzer import PayloadAnalyzer, PayloadField, PayloadThreat, PayloadReport, AnalyzerConfig, AnalyzerStats as PayloadAnalyzerStats
 from sentinel.compliance_checker import ComplianceChecker, ComplianceRule, Evidence, ComplianceResult, ComplianceOverview, CheckerStats
+from sentinel.prompt_injection_v2 import PromptInjectionV2, InjectionVector, DecomposedPayload, DetectionResultV2, DetectorV2Stats
+from sentinel.safety_cache import SafetyCache, CacheEntry, CacheConfig, CacheReport, CacheStats
 
-__version__ = "0.77.0"
+__version__ = "0.78.0"
 
 __all__ = [
     "SentinelGuard",
@@ -704,4 +706,14 @@ __all__ = [
     "ComplianceResult",
     "ComplianceOverview",
     "CheckerStats",
+    "PromptInjectionV2",
+    "InjectionVector",
+    "DecomposedPayload",
+    "DetectionResultV2",
+    "DetectorV2Stats",
+    "SafetyCache",
+    "CacheEntry",
+    "CacheConfig",
+    "CacheReport",
+    "CacheStats",
 ]
