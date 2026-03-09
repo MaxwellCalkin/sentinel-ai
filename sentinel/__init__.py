@@ -149,8 +149,10 @@ from sentinel.token_anomaly import TokenAnomaly, TokenRecord, AnomalyCheck, Toke
 from sentinel.safety_contract import SafetyContract, Condition as ContractCondition, Violation, ContractResult, ContractReport
 from sentinel.output_censor import OutputCensor, CensorRule, CensorResult, CensorStats
 from sentinel.prompt_sanitizer import PromptSanitizer, SanitizeConfig, SanitizeReport
+from sentinel.response_validator import ResponseValidator, ResponseCheck, ResponseValidation, ResponseValidatorStats
+from sentinel.safety_gateway import SafetyGateway, GatewayCheck, GatewayCheckResult, GatewayResult, GatewayStats
 
-__version__ = "0.63.0"
+__version__ = "0.64.0"
 
 __all__ = [
     "SentinelGuard",
@@ -545,4 +547,13 @@ __all__ = [
     "PromptSanitizer",
     "SanitizeConfig",
     "SanitizeReport",
+    "ResponseValidator",
+    "ResponseCheck",
+    "ResponseValidation",
+    "ResponseValidatorStats",
+    "SafetyGateway",
+    "GatewayCheck",
+    "GatewayCheckResult",
+    "GatewayResult",
+    "GatewayStats",
 ]
