@@ -183,8 +183,10 @@ from sentinel.context_boundary import ContextBoundary, Segment, BoundaryViolatio
 from sentinel.safety_report import SafetyReport as SafetyReportGenerator, Finding, ReportSection, ReportMetadata, GeneratedReport, ReportStats
 from sentinel.tool_safety_guard import ToolSafetyGuard, ToolDefinition, ToolCallRequest, ToolCallDecision, ToolGuardConfig, ToolGuardStats
 from sentinel.safety_pipeline import SafetyPipeline, PipelineStage, StageResult, PipelineOutput, PipelineConfig, PipelineStats
+from sentinel.semantic_validator import SemanticValidator, SemanticMatch, SemanticIssue, ValidationResult as SemanticValidationResult
+from sentinel.threat_intelligence import ThreatIntelligence, ThreatIndicator, ThreatMatch, ThreatScanResult, ThreatFeedStats
 
-__version__ = "0.80.0"
+__version__ = "0.81.0"
 
 __all__ = [
     "SentinelGuard",
@@ -744,4 +746,13 @@ __all__ = [
     "PipelineOutput",
     "PipelineConfig",
     "PipelineStats",
+    "SemanticValidator",
+    "SemanticMatch",
+    "SemanticIssue",
+    "SemanticValidationResult",
+    "ThreatIntelligence",
+    "ThreatIndicator",
+    "ThreatMatch",
+    "ThreatScanResult",
+    "ThreatFeedStats",
 ]
