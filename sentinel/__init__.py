@@ -111,8 +111,10 @@ from sentinel.latency_tracker import LatencyTracker, LatencyReport
 from sentinel.response_cache import ResponseCache, CacheResponse, CacheMetrics as ResponseCacheMetrics
 from sentinel.usage_quota import UsageQuota, QuotaStatus
 from sentinel.sensitivity_classifier import SensitivityClassifier, SensitivityResult
+from sentinel.conversation_memory import ConversationMemory, MemoryMessage, MemoryStats
+from sentinel.guardrail_metrics import GuardrailMetrics, CounterValue, GaugeValue, HistogramValue
 
-__version__ = "0.44.0"
+__version__ = "0.45.0"
 
 __all__ = [
     "SentinelGuard",
@@ -360,4 +362,11 @@ __all__ = [
     "QuotaStatus",
     "SensitivityClassifier",
     "SensitivityResult",
+    "ConversationMemory",
+    "MemoryMessage",
+    "MemoryStats",
+    "GuardrailMetrics",
+    "CounterValue",
+    "GaugeValue",
+    "HistogramValue",
 ]
