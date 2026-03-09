@@ -69,8 +69,9 @@ from sentinel.content_filter import ContentFilter, Category as ContentCategory, 
 from sentinel.topic_guard import TopicGuard, TopicResult
 from sentinel.fewshot_protector import FewShotProtector, FewShotResult
 from sentinel.language_detector import LanguageDetector, LanguageResult
+from sentinel.bias_detector import BiasDetector, BiasResult
 
-__version__ = "0.24.0"
+__version__ = "0.25.0"
 
 __all__ = [
     "SentinelGuard",
@@ -201,4 +202,6 @@ __all__ = [
     "FewShotResult",
     "LanguageDetector",
     "LanguageResult",
+    "BiasDetector",
+    "BiasResult",
 ]
