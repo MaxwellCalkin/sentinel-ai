@@ -117,8 +117,10 @@ from sentinel.token_splitter import TokenSplitter, TextChunk
 from sentinel.access_control import AccessControl, AccessResult as AccessCheckResult
 from sentinel.output_benchmark import OutputBenchmark, BenchmarkScore, DimensionScore
 from sentinel.event_bus import EventBus, Event, EventStats
+from sentinel.prompt_analytics import PromptAnalytics, PromptRecord, AnalyticsSummary
+from sentinel.model_card import ModelCard, CardValidation, SafetyRating, IntendedUse
 
-__version__ = "0.47.0"
+__version__ = "0.48.0"
 
 __all__ = [
     "SentinelGuard",
@@ -383,4 +385,11 @@ __all__ = [
     "EventBus",
     "Event",
     "EventStats",
+    "PromptAnalytics",
+    "PromptRecord",
+    "AnalyticsSummary",
+    "ModelCard",
+    "CardValidation",
+    "SafetyRating",
+    "IntendedUse",
 ]
