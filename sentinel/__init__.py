@@ -105,8 +105,10 @@ from sentinel.explainability import ExplainabilityTracer, Explanation, TraceReco
 from sentinel.multi_turn import MultiTurnAnalyzer, MultiTurnReport, Turn
 from sentinel.semantic_router import SemanticRouter, RouteResult as SemanticRouteResult
 from sentinel.config_validator import ConfigValidator, ConfigResult, ConfigIssue
+from sentinel.health_check import HealthCheck, HealthReport, ComponentHealth
+from sentinel.message_queue import MessageQueue, QueueMessage, QueueStats
 
-__version__ = "0.41.0"
+__version__ = "0.42.0"
 
 __all__ = [
     "SentinelGuard",
@@ -339,4 +341,10 @@ __all__ = [
     "ConfigValidator",
     "ConfigResult",
     "ConfigIssue",
+    "HealthCheck",
+    "HealthReport",
+    "ComponentHealth",
+    "MessageQueue",
+    "QueueMessage",
+    "QueueStats",
 ]
