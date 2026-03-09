@@ -81,8 +81,10 @@ from sentinel.model_router import ModelRouter as ContentModelRouter, RouteDecisi
 from sentinel.incident_tracker import IncidentTracker, Incident, IncidentSeverity, IncidentState, IncidentSummary
 from sentinel.policy_engine import PolicyEngine, PolicyResult, PolicyAction, PolicyViolation
 from sentinel.compliance_audit import ComplianceAuditor, AuditReport, CheckResult, CheckStatus
+from sentinel.token_counter import TokenCounter, TokenEstimate, TruncateResult
+from sentinel.response_sanitizer import ResponseSanitizer, SanitizeOutput
 
-__version__ = "0.29.0"
+__version__ = "0.30.0"
 
 __all__ = [
     "SentinelGuard",
@@ -252,4 +254,9 @@ __all__ = [
     "AuditReport",
     "CheckResult",
     "CheckStatus",
+    "TokenCounter",
+    "TokenEstimate",
+    "TruncateResult",
+    "ResponseSanitizer",
+    "SanitizeOutput",
 ]
