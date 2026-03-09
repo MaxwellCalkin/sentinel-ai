@@ -129,8 +129,10 @@ from sentinel.threat_model import ThreatModel, ThreatAnalysis, Threat, Component
 from sentinel.data_lineage import DataLineage, LineageNode, LineageEdge, FlowRecord, LineageValidation
 from sentinel.secret_rotator import SecretRotator, RotationStatus, RotationReport, RotationEvent
 from sentinel.attack_surface import AttackSurface, SurfaceAnalysis, Endpoint, DataFlow as AttackDataFlow, Vulnerability
+from sentinel.alert_manager import AlertManager, Alert, AlertStats
+from sentinel.context_guard import ContextGuard, ContextCheckResult, ConversationCheckResult, GuardStats as ContextGuardStats
 
-__version__ = "0.53.0"
+__version__ = "0.54.0"
 
 __all__ = [
     "SentinelGuard",
@@ -442,4 +444,11 @@ __all__ = [
     "Endpoint",
     "AttackDataFlow",
     "Vulnerability",
+    "AlertManager",
+    "Alert",
+    "AlertStats",
+    "ContextGuard",
+    "ContextCheckResult",
+    "ConversationCheckResult",
+    "ContextGuardStats",
 ]
