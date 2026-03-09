@@ -89,8 +89,10 @@ from sentinel.input_validator import InputValidator, InputValidationResult
 from sentinel.anomaly_detector import AnomalyDetector, AnomalyReport, AnomalyFlag
 from sentinel.code_exec_guard import CodeExecGuard, CodeExecResult, CodeThreat
 from sentinel.prompt_chain import PromptChain, ChainResult
+from sentinel.model_fingerprint import ModelFingerprint, FingerprintResult
+from sentinel.safety_dashboard import SafetyDashboard, DashboardSummary, TimeWindow
 
-__version__ = "0.33.0"
+__version__ = "0.34.0"
 
 __all__ = [
     "SentinelGuard",
@@ -281,4 +283,9 @@ __all__ = [
     "CodeThreat",
     "PromptChain",
     "ChainResult",
+    "ModelFingerprint",
+    "FingerprintResult",
+    "SafetyDashboard",
+    "DashboardSummary",
+    "TimeWindow",
 ]
