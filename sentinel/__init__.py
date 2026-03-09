@@ -169,8 +169,10 @@ from sentinel.content_classifier_v2 import ContentClassifierV2, LabelDefinition,
 from sentinel.response_coherence import ResponseCoherence, CoherenceScore, CoherenceIssue, CoherenceReport, CoherenceStats
 from sentinel.embedding_validator import EmbeddingValidator, EmbeddingCheck, EmbeddingReport, EmbeddingProfile, ValidatorStats as EmbeddingValidatorStats
 from sentinel.safety_ensemble import SafetyEnsemble, CheckerVote, EnsembleDecision, EnsembleConfig, EnsembleStats
+from sentinel.token_estimator import TokenEstimator, TokenEstimate, CostEstimate, EstimatorStats
+from sentinel.safety_logger import SafetyLogger, SafetyLogEntry, LogFilter, LogSummary, LoggerStats
 
-__version__ = "0.73.0"
+__version__ = "0.74.0"
 
 __all__ = [
     "SentinelGuard",
@@ -654,4 +656,13 @@ __all__ = [
     "EnsembleDecision",
     "EnsembleConfig",
     "EnsembleStats",
+    "TokenEstimator",
+    "TokenEstimate",
+    "CostEstimate",
+    "EstimatorStats",
+    "SafetyLogger",
+    "SafetyLogEntry",
+    "LogFilter",
+    "LogSummary",
+    "LoggerStats",
 ]
