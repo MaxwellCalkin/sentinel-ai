@@ -131,8 +131,10 @@ from sentinel.secret_rotator import SecretRotator, RotationStatus, RotationRepor
 from sentinel.attack_surface import AttackSurface, SurfaceAnalysis, Endpoint, DataFlow as AttackDataFlow, Vulnerability
 from sentinel.alert_manager import AlertManager, Alert, AlertStats
 from sentinel.context_guard import ContextGuard, ContextCheckResult, ConversationCheckResult, GuardStats as ContextGuardStats
+from sentinel.token_tracer import TokenTracer, TraceEntry, TracerReport
+from sentinel.safety_policy import SafetyPolicy, PolicyRule, PolicyEvaluation, RuleMatch
 
-__version__ = "0.54.0"
+__version__ = "0.55.0"
 
 __all__ = [
     "SentinelGuard",
@@ -451,4 +453,11 @@ __all__ = [
     "ContextCheckResult",
     "ConversationCheckResult",
     "ContextGuardStats",
+    "TokenTracer",
+    "TraceEntry",
+    "TracerReport",
+    "SafetyPolicy",
+    "PolicyRule",
+    "PolicyEvaluation",
+    "RuleMatch",
 ]
