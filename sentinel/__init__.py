@@ -141,8 +141,10 @@ from sentinel.output_monitor import OutputMonitor, MonitorEvent, MonitorReport, 
 from sentinel.prompt_injection_detector import PromptInjectionDetector, InjectionResult, InjectionExplanation, DetectorStats, PatternDef
 from sentinel.input_guard import InputGuard, GuardRule, GuardResult, GuardReport
 from sentinel.safety_reporter import SafetyReporter, SafetyEvent, TrendAnalysis, ReporterSummary
+from sentinel.embedding_drift import EmbeddingDrift, EmbeddingRecord, DriftCheck, DriftStats, DriftReport
+from sentinel.compliance_gate import ComplianceGate, ComplianceCheck, CheckOutcome, GateDecision, GateStats
 
-__version__ = "0.59.0"
+__version__ = "0.60.0"
 
 __all__ = [
     "SentinelGuard",
@@ -501,4 +503,14 @@ __all__ = [
     "SafetyEvent",
     "TrendAnalysis",
     "ReporterSummary",
+    "EmbeddingDrift",
+    "EmbeddingRecord",
+    "DriftCheck",
+    "DriftStats",
+    "DriftReport",
+    "ComplianceGate",
+    "ComplianceCheck",
+    "CheckOutcome",
+    "GateDecision",
+    "GateStats",
 ]
