@@ -109,8 +109,10 @@ from sentinel.health_check import HealthCheck, HealthReport, ComponentHealth
 from sentinel.message_queue import MessageQueue, QueueMessage, QueueStats
 from sentinel.latency_tracker import LatencyTracker, LatencyReport
 from sentinel.response_cache import ResponseCache, CacheResponse, CacheMetrics as ResponseCacheMetrics
+from sentinel.usage_quota import UsageQuota, QuotaStatus
+from sentinel.sensitivity_classifier import SensitivityClassifier, SensitivityResult
 
-__version__ = "0.43.0"
+__version__ = "0.44.0"
 
 __all__ = [
     "SentinelGuard",
@@ -354,4 +356,8 @@ __all__ = [
     "ResponseCache",
     "CacheResponse",
     "ResponseCacheMetrics",
+    "UsageQuota",
+    "QuotaStatus",
+    "SensitivityClassifier",
+    "SensitivityResult",
 ]
