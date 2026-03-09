@@ -125,8 +125,10 @@ from sentinel.risk_scorecard import RiskScorecard, ScorecardResult, Finding as S
 from sentinel.prompt_registry import PromptRegistry, RegistryEntry, RegistryStats
 from sentinel.safety_benchmark import SafetyBenchmark, BenchmarkCase, BenchmarkReport, CategoryStats
 from sentinel.compliance_report import ComplianceReport, ReportOutput, FrameworkSummary, Control as ComplianceControl
+from sentinel.threat_model import ThreatModel, ThreatAnalysis, Threat, Component as ThreatComponent
+from sentinel.data_lineage import DataLineage, LineageNode, LineageEdge, FlowRecord, LineageValidation
 
-__version__ = "0.51.0"
+__version__ = "0.52.0"
 
 __all__ = [
     "SentinelGuard",
@@ -420,4 +422,13 @@ __all__ = [
     "ReportOutput",
     "FrameworkSummary",
     "ComplianceControl",
+    "ThreatModel",
+    "ThreatAnalysis",
+    "Threat",
+    "ThreatComponent",
+    "DataLineage",
+    "LineageNode",
+    "LineageEdge",
+    "FlowRecord",
+    "LineageValidation",
 ]
