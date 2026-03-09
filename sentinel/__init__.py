@@ -85,8 +85,10 @@ from sentinel.token_counter import TokenCounter, TokenEstimate, TruncateResult
 from sentinel.response_sanitizer import ResponseSanitizer, SanitizeOutput
 from sentinel.context_isolation import ContextIsolation, IsolationResult, IsolationStats
 from sentinel.semantic_cache import SemanticCache, CacheHit, CacheStats
+from sentinel.input_validator import InputValidator, InputValidationResult
+from sentinel.anomaly_detector import AnomalyDetector, AnomalyReport, AnomalyFlag
 
-__version__ = "0.31.0"
+__version__ = "0.32.0"
 
 __all__ = [
     "SentinelGuard",
@@ -267,4 +269,9 @@ __all__ = [
     "SemanticCache",
     "CacheHit",
     "CacheStats",
+    "InputValidator",
+    "InputValidationResult",
+    "AnomalyDetector",
+    "AnomalyReport",
+    "AnomalyFlag",
 ]
