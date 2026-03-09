@@ -60,8 +60,10 @@ from sentinel.canary_detector import CanaryDetector, CanaryResult, CanaryMatch
 from sentinel.cost_tracker import CostTracker, UsageRecord, ModelCost, BudgetExceeded as CostBudgetExceeded
 from sentinel.ab_tester import ABTester, ABReport, VariantStats
 from sentinel.retry_policy import RetryPolicy, RetryResult
+from sentinel.embedding_guard import EmbeddingGuard, SemanticResult, SemanticMatch
+from sentinel.groundedness import GroundednessChecker, GroundednessResult, Claim
 
-__version__ = "0.20.0"
+__version__ = "0.21.0"
 
 __all__ = [
     "SentinelGuard",
@@ -169,4 +171,10 @@ __all__ = [
     "VariantStats",
     "RetryPolicy",
     "RetryResult",
+    "EmbeddingGuard",
+    "SemanticResult",
+    "SemanticMatch",
+    "GroundednessChecker",
+    "GroundednessResult",
+    "Claim",
 ]
