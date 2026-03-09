@@ -93,8 +93,10 @@ from sentinel.model_fingerprint import ModelFingerprint, FingerprintResult
 from sentinel.safety_dashboard import SafetyDashboard, DashboardSummary, TimeWindow
 from sentinel.tool_call_validator import ToolCallValidator, ToolValidationResult
 from sentinel.prompt_shield import PromptShield, ShieldResult
+from sentinel.env_security import EnvSecurityChecker, EnvSecurityReport, SecurityIssue as EnvSecurityIssue
+from sentinel.data_masker import DataMasker, MaskResult
 
-__version__ = "0.35.0"
+__version__ = "0.36.0"
 
 __all__ = [
     "SentinelGuard",
@@ -294,4 +296,9 @@ __all__ = [
     "ToolValidationResult",
     "PromptShield",
     "ShieldResult",
+    "EnvSecurityChecker",
+    "EnvSecurityReport",
+    "EnvSecurityIssue",
+    "DataMasker",
+    "MaskResult",
 ]
