@@ -151,8 +151,10 @@ from sentinel.output_censor import OutputCensor, CensorRule, CensorResult, Censo
 from sentinel.prompt_sanitizer import PromptSanitizer, SanitizeConfig, SanitizeReport
 from sentinel.response_validator import ResponseValidator, ResponseCheck, ResponseValidation, ResponseValidatorStats
 from sentinel.safety_gateway import SafetyGateway, GatewayCheck, GatewayCheckResult, GatewayResult, GatewayStats
+from sentinel.adversarial_probe import AdversarialProbe, Probe, ProbeResult, ProbeReport
+from sentinel.decision_logger import DecisionLogger, Decision, DecisionSummary
 
-__version__ = "0.64.0"
+__version__ = "0.65.0"
 
 __all__ = [
     "SentinelGuard",
@@ -556,4 +558,11 @@ __all__ = [
     "GatewayCheckResult",
     "GatewayResult",
     "GatewayStats",
+    "AdversarialProbe",
+    "Probe",
+    "ProbeResult",
+    "ProbeReport",
+    "DecisionLogger",
+    "Decision",
+    "DecisionSummary",
 ]
