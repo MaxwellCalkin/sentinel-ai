@@ -139,8 +139,10 @@ from sentinel.intent_classifier import IntentClassifier, ClassificationOutput, I
 from sentinel.conversation_analyzer import ConversationAnalyzer, ConversationAnalysis as ConvAnalysis, QualityScore, EngagementMetrics
 from sentinel.output_monitor import OutputMonitor, MonitorEvent, MonitorReport, DriftReport, AnomalyEvent
 from sentinel.prompt_injection_detector import PromptInjectionDetector, InjectionResult, InjectionExplanation, DetectorStats, PatternDef
+from sentinel.input_guard import InputGuard, GuardRule, GuardResult, GuardReport
+from sentinel.safety_reporter import SafetyReporter, SafetyEvent, TrendAnalysis, ReporterSummary
 
-__version__ = "0.58.0"
+__version__ = "0.59.0"
 
 __all__ = [
     "SentinelGuard",
@@ -491,4 +493,12 @@ __all__ = [
     "InjectionExplanation",
     "DetectorStats",
     "PatternDef",
+    "InputGuard",
+    "GuardRule",
+    "GuardResult",
+    "GuardReport",
+    "SafetyReporter",
+    "SafetyEvent",
+    "TrendAnalysis",
+    "ReporterSummary",
 ]
