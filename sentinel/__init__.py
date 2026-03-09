@@ -179,8 +179,10 @@ from sentinel.payload_analyzer import PayloadAnalyzer, PayloadField, PayloadThre
 from sentinel.compliance_checker import ComplianceChecker, ComplianceRule, Evidence, ComplianceResult, ComplianceOverview, CheckerStats
 from sentinel.prompt_injection_v2 import PromptInjectionV2, InjectionVector, DecomposedPayload, DetectionResultV2, DetectorV2Stats
 from sentinel.safety_cache import SafetyCache, CacheEntry, CacheConfig, CacheReport, CacheStats
+from sentinel.context_boundary import ContextBoundary, Segment, BoundaryViolation, BoundaryReport, BoundaryConfig, BoundaryStats
+from sentinel.safety_report import SafetyReport as SafetyReportGenerator, Finding, ReportSection, ReportMetadata, GeneratedReport, ReportStats
 
-__version__ = "0.78.0"
+__version__ = "0.79.0"
 
 __all__ = [
     "SentinelGuard",
@@ -716,4 +718,16 @@ __all__ = [
     "CacheConfig",
     "CacheReport",
     "CacheStats",
+    "ContextBoundary",
+    "Segment",
+    "BoundaryViolation",
+    "BoundaryReport",
+    "BoundaryConfig",
+    "BoundaryStats",
+    "SafetyReportGenerator",
+    "Finding",
+    "ReportSection",
+    "ReportMetadata",
+    "GeneratedReport",
+    "ReportStats",
 ]
