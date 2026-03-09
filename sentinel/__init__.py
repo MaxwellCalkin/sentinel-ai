@@ -70,8 +70,11 @@ from sentinel.topic_guard import TopicGuard, TopicResult
 from sentinel.fewshot_protector import FewShotProtector, FewShotResult
 from sentinel.language_detector import LanguageDetector, LanguageResult
 from sentinel.bias_detector import BiasDetector, BiasResult
+from sentinel.watermark import WatermarkDetector, WatermarkResult, TextStats
+from sentinel.output_guard import OutputGuard, OutputCheckResult
+from sentinel.safety_score import SafetyScorer, SafetyScore
 
-__version__ = "0.25.0"
+__version__ = "0.26.0"
 
 __all__ = [
     "SentinelGuard",
@@ -204,4 +207,11 @@ __all__ = [
     "LanguageResult",
     "BiasDetector",
     "BiasResult",
+    "WatermarkDetector",
+    "WatermarkResult",
+    "TextStats",
+    "OutputGuard",
+    "OutputCheckResult",
+    "SafetyScorer",
+    "SafetyScore",
 ]
