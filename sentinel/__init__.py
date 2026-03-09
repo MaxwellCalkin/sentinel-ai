@@ -57,8 +57,11 @@ from sentinel.prompt_template import PromptTemplate, PromptLibrary
 from sentinel.guardrail_chain import GuardrailChain, Step as GuardrailStep, OnFail
 from sentinel.response_classifier import ResponseClassifier, ResponseCategory
 from sentinel.canary_detector import CanaryDetector, CanaryResult, CanaryMatch
+from sentinel.cost_tracker import CostTracker, UsageRecord, ModelCost, BudgetExceeded as CostBudgetExceeded
+from sentinel.ab_tester import ABTester, ABReport, VariantStats
+from sentinel.retry_policy import RetryPolicy, RetryResult
 
-__version__ = "0.19.0"
+__version__ = "0.20.0"
 
 __all__ = [
     "SentinelGuard",
@@ -157,4 +160,13 @@ __all__ = [
     "CanaryDetector",
     "CanaryResult",
     "CanaryMatch",
+    "CostTracker",
+    "UsageRecord",
+    "ModelCost",
+    "CostBudgetExceeded",
+    "ABTester",
+    "ABReport",
+    "VariantStats",
+    "RetryPolicy",
+    "RetryResult",
 ]
