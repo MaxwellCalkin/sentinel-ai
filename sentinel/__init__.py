@@ -66,8 +66,11 @@ from sentinel.prompt_versioner import PromptVersioner, PromptVersion, PromptDiff
 from sentinel.circuit_breaker import CircuitBreaker, CircuitState, CircuitOpenError
 from sentinel.permission_guard import PermissionGuard, PermissionResult
 from sentinel.content_filter import ContentFilter, Category as ContentCategory, FilterResult
+from sentinel.topic_guard import TopicGuard, TopicResult
+from sentinel.fewshot_protector import FewShotProtector, FewShotResult
+from sentinel.language_detector import LanguageDetector, LanguageResult
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"
 
 __all__ = [
     "SentinelGuard",
@@ -192,4 +195,10 @@ __all__ = [
     "ContentFilter",
     "ContentCategory",
     "FilterResult",
+    "TopicGuard",
+    "TopicResult",
+    "FewShotProtector",
+    "FewShotResult",
+    "LanguageDetector",
+    "LanguageResult",
 ]
