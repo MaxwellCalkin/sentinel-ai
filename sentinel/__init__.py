@@ -191,8 +191,10 @@ from sentinel.response_quality import ResponseQuality, QualityDimension, Quality
 from sentinel.safety_config import SafetyConfig, ConfigValue, ConfigProfile, ConfigValidation, ConfigStats
 from sentinel.prompt_fuzzer import PromptFuzzer, FuzzMutation, FuzzedPrompt, FuzzConfig, FuzzStats
 from sentinel.safety_monitor import SafetyMonitor, MetricPoint, AlertRule, Alert as MonitorAlert, MonitorReport, MonitorStats
+from sentinel.instruction_parser import InstructionParser, Instruction, ConflictPair, ParseResult, ParserStats
+from sentinel.data_flow_guard import DataFlowGuard, FlowNode, FlowConnection, FlowViolation, FlowAnalysis, FlowStats
 
-__version__ = "0.84.0"
+__version__ = "0.85.0"
 
 __all__ = [
     "SentinelGuard",
@@ -792,4 +794,15 @@ __all__ = [
     "MonitorAlert",
     "MonitorReport",
     "MonitorStats",
+    "InstructionParser",
+    "Instruction",
+    "ConflictPair",
+    "ParseResult",
+    "ParserStats",
+    "DataFlowGuard",
+    "FlowNode",
+    "FlowConnection",
+    "FlowViolation",
+    "FlowAnalysis",
+    "FlowStats",
 ]
