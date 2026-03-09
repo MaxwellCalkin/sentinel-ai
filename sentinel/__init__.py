@@ -147,8 +147,10 @@ from sentinel.prompt_decomposer import PromptDecomposer, SubTask, Decomposition,
 from sentinel.model_validator import ModelValidator, ValidationRule as ModelValidationRule, FieldResult, ModelValidation, ValidatorStats
 from sentinel.token_anomaly import TokenAnomaly, TokenRecord, AnomalyCheck, TokenAnomalyStats
 from sentinel.safety_contract import SafetyContract, Condition as ContractCondition, Violation, ContractResult, ContractReport
+from sentinel.output_censor import OutputCensor, CensorRule, CensorResult, CensorStats
+from sentinel.prompt_sanitizer import PromptSanitizer, SanitizeConfig, SanitizeReport
 
-__version__ = "0.62.0"
+__version__ = "0.63.0"
 
 __all__ = [
     "SentinelGuard",
@@ -536,4 +538,11 @@ __all__ = [
     "Violation",
     "ContractResult",
     "ContractReport",
+    "OutputCensor",
+    "CensorRule",
+    "CensorResult",
+    "CensorStats",
+    "PromptSanitizer",
+    "SanitizeConfig",
+    "SanitizeReport",
 ]
