@@ -137,8 +137,10 @@ from sentinel.privacy_guard import PrivacyGuard, PrivacyCheck, MinimizationResul
 from sentinel.response_filter import ResponseFilter, FilterResult, FilterStats
 from sentinel.intent_classifier import IntentClassifier, ClassificationOutput, IntentDef, ClassifierStats
 from sentinel.conversation_analyzer import ConversationAnalyzer, ConversationAnalysis as ConvAnalysis, QualityScore, EngagementMetrics
+from sentinel.output_monitor import OutputMonitor, MonitorEvent, MonitorReport, DriftReport, AnomalyEvent
+from sentinel.prompt_injection_detector import PromptInjectionDetector, InjectionResult, InjectionExplanation, DetectorStats, PatternDef
 
-__version__ = "0.57.0"
+__version__ = "0.58.0"
 
 __all__ = [
     "SentinelGuard",
@@ -479,4 +481,14 @@ __all__ = [
     "ConvAnalysis",
     "QualityScore",
     "EngagementMetrics",
+    "OutputMonitor",
+    "MonitorEvent",
+    "MonitorReport",
+    "DriftReport",
+    "AnomalyEvent",
+    "PromptInjectionDetector",
+    "InjectionResult",
+    "InjectionExplanation",
+    "DetectorStats",
+    "PatternDef",
 ]
