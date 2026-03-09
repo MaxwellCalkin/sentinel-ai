@@ -97,8 +97,10 @@ from sentinel.env_security import EnvSecurityChecker, EnvSecurityReport, Securit
 from sentinel.data_masker import DataMasker, MaskResult
 from sentinel.multi_model import MultiModelGuard, ConsistencyResult
 from sentinel.factuality import FactualityChecker, FactualityResult, FactClaim
+from sentinel.output_formatter import OutputFormatter, FormatResult
+from sentinel.feedback_loop import FeedbackLoop, FeedbackEntry, FeedbackReport
 
-__version__ = "0.37.0"
+__version__ = "0.38.0"
 
 __all__ = [
     "SentinelGuard",
@@ -308,4 +310,9 @@ __all__ = [
     "FactualityChecker",
     "FactualityResult",
     "FactClaim",
+    "OutputFormatter",
+    "FormatResult",
+    "FeedbackLoop",
+    "FeedbackEntry",
+    "FeedbackReport",
 ]
