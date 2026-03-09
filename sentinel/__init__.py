@@ -107,8 +107,10 @@ from sentinel.semantic_router import SemanticRouter, RouteResult as SemanticRout
 from sentinel.config_validator import ConfigValidator, ConfigResult, ConfigIssue
 from sentinel.health_check import HealthCheck, HealthReport, ComponentHealth
 from sentinel.message_queue import MessageQueue, QueueMessage, QueueStats
+from sentinel.latency_tracker import LatencyTracker, LatencyReport
+from sentinel.response_cache import ResponseCache, CacheResponse, CacheMetrics as ResponseCacheMetrics
 
-__version__ = "0.42.0"
+__version__ = "0.43.0"
 
 __all__ = [
     "SentinelGuard",
@@ -347,4 +349,9 @@ __all__ = [
     "MessageQueue",
     "QueueMessage",
     "QueueStats",
+    "LatencyTracker",
+    "LatencyReport",
+    "ResponseCache",
+    "CacheResponse",
+    "ResponseCacheMetrics",
 ]
