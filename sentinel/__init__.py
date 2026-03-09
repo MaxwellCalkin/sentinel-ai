@@ -123,8 +123,10 @@ from sentinel.dependency_guard import DependencyGuard, PackageCheck, DependencyR
 from sentinel.schema_enforcer import SchemaEnforcer, EnforcementResult, CoercionResult
 from sentinel.risk_scorecard import RiskScorecard, ScorecardResult, Finding as ScorecardFinding, ComparisonResult as ScorecardComparison
 from sentinel.prompt_registry import PromptRegistry, RegistryEntry, RegistryStats
+from sentinel.safety_benchmark import SafetyBenchmark, BenchmarkCase, BenchmarkReport, CategoryStats
+from sentinel.compliance_report import ComplianceReport, ReportOutput, FrameworkSummary, Control as ComplianceControl
 
-__version__ = "0.50.0"
+__version__ = "0.51.0"
 
 __all__ = [
     "SentinelGuard",
@@ -410,4 +412,12 @@ __all__ = [
     "PromptRegistry",
     "RegistryEntry",
     "RegistryStats",
+    "SafetyBenchmark",
+    "BenchmarkCase",
+    "BenchmarkReport",
+    "CategoryStats",
+    "ComplianceReport",
+    "ReportOutput",
+    "FrameworkSummary",
+    "ComplianceControl",
 ]
