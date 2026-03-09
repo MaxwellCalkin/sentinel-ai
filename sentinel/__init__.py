@@ -75,8 +75,12 @@ from sentinel.output_guard import OutputGuard, OutputCheckResult
 from sentinel.safety_score import SafetyScorer, SafetyScore
 from sentinel.redteam import RedTeamSuite, RedTeamReport, CategoryReport, AttackResult
 from sentinel.consent_tracker import ConsentTracker, ConsentRecord, ConsentStatus
+from sentinel.ratelimit_guard import RateLimitGuard, RateLimitResult, BucketStats
+from sentinel.diff_privacy import DiffPrivacy, NoiseResult, PrivateHistogram, BudgetExhausted as PrivacyBudgetExhausted
+from sentinel.model_router import ModelRouter as ContentModelRouter, RouteDecision as ContentRouteDecision, RouterStats
+from sentinel.incident_tracker import IncidentTracker, Incident, IncidentSeverity, IncidentState, IncidentSummary
 
-__version__ = "0.27.0"
+__version__ = "0.28.0"
 
 __all__ = [
     "SentinelGuard",
@@ -223,4 +227,19 @@ __all__ = [
     "ConsentTracker",
     "ConsentRecord",
     "ConsentStatus",
+    "RateLimitGuard",
+    "RateLimitResult",
+    "BucketStats",
+    "DiffPrivacy",
+    "NoiseResult",
+    "PrivateHistogram",
+    "PrivacyBudgetExhausted",
+    "ContentModelRouter",
+    "ContentRouteDecision",
+    "RouterStats",
+    "IncidentTracker",
+    "Incident",
+    "IncidentSeverity",
+    "IncidentState",
+    "IncidentSummary",
 ]
