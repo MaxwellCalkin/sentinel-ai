@@ -181,8 +181,10 @@ from sentinel.prompt_injection_v2 import PromptInjectionV2, InjectionVector, Dec
 from sentinel.safety_cache import SafetyCache, CacheEntry, CacheConfig, CacheReport, CacheStats
 from sentinel.context_boundary import ContextBoundary, Segment, BoundaryViolation, BoundaryReport, BoundaryConfig, BoundaryStats
 from sentinel.safety_report import SafetyReport as SafetyReportGenerator, Finding, ReportSection, ReportMetadata, GeneratedReport, ReportStats
+from sentinel.tool_safety_guard import ToolSafetyGuard, ToolDefinition, ToolCallRequest, ToolCallDecision, ToolGuardConfig, ToolGuardStats
+from sentinel.safety_pipeline import SafetyPipeline, PipelineStage, StageResult, PipelineOutput, PipelineConfig, PipelineStats
 
-__version__ = "0.79.0"
+__version__ = "0.80.0"
 
 __all__ = [
     "SentinelGuard",
@@ -730,4 +732,16 @@ __all__ = [
     "ReportMetadata",
     "GeneratedReport",
     "ReportStats",
+    "ToolSafetyGuard",
+    "ToolDefinition",
+    "ToolCallRequest",
+    "ToolCallDecision",
+    "ToolGuardConfig",
+    "ToolGuardStats",
+    "SafetyPipeline",
+    "PipelineStage",
+    "StageResult",
+    "PipelineOutput",
+    "PipelineConfig",
+    "PipelineStats",
 ]
