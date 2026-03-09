@@ -189,8 +189,10 @@ from sentinel.output_filter import OutputFilter, FilterRule, FilterMatch, Filter
 from sentinel.prompt_augmentor import PromptAugmentor, Augmentation, AugmentedPrompt, AugmentorConfig, AugmentorStats
 from sentinel.response_quality import ResponseQuality, QualityDimension, QualityAssessment, QualityConfig, QualityStats
 from sentinel.safety_config import SafetyConfig, ConfigValue, ConfigProfile, ConfigValidation, ConfigStats
+from sentinel.prompt_fuzzer import PromptFuzzer, FuzzMutation, FuzzedPrompt, FuzzConfig, FuzzStats
+from sentinel.safety_monitor import SafetyMonitor, MetricPoint, AlertRule, Alert as MonitorAlert, MonitorReport, MonitorStats
 
-__version__ = "0.83.0"
+__version__ = "0.84.0"
 
 __all__ = [
     "SentinelGuard",
@@ -779,4 +781,15 @@ __all__ = [
     "ConfigProfile",
     "ConfigValidation",
     "ConfigStats",
+    "PromptFuzzer",
+    "FuzzMutation",
+    "FuzzedPrompt",
+    "FuzzConfig",
+    "FuzzStats",
+    "SafetyMonitor",
+    "MetricPoint",
+    "AlertRule",
+    "MonitorAlert",
+    "MonitorReport",
+    "MonitorStats",
 ]
