@@ -73,8 +73,10 @@ from sentinel.bias_detector import BiasDetector, BiasResult
 from sentinel.watermark import WatermarkDetector, WatermarkResult, TextStats
 from sentinel.output_guard import OutputGuard, OutputCheckResult
 from sentinel.safety_score import SafetyScorer, SafetyScore
+from sentinel.redteam import RedTeamSuite, RedTeamReport, CategoryReport, AttackResult
+from sentinel.consent_tracker import ConsentTracker, ConsentRecord, ConsentStatus
 
-__version__ = "0.26.0"
+__version__ = "0.27.0"
 
 __all__ = [
     "SentinelGuard",
@@ -214,4 +216,11 @@ __all__ = [
     "OutputCheckResult",
     "SafetyScorer",
     "SafetyScore",
+    "RedTeamSuite",
+    "RedTeamReport",
+    "CategoryReport",
+    "AttackResult",
+    "ConsentTracker",
+    "ConsentRecord",
+    "ConsentStatus",
 ]
